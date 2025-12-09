@@ -38,23 +38,27 @@ const App: React.FC = () => {
   
   // Handle Intro Completion - This is a User Gesture, so we can request storage access here
   const handleIntroComplete = async () => {
-    // 1. Try to get storage access permissions safely
-    const hasAccess = await tryToAccessStorage();
-    setStorageEnabled(hasAccess);
+    try {
+        // 1. Try to get storage access permissions safely
+        const hasAccess = await tryToAccessStorage();
+        setStorageEnabled(hasAccess);
 
-    if (!hasAccess) {
-        // Optional: Notify user that progress won't be saved
-        console.warn("Storage access not granted. Game progress will not persist after reload.");
-    }
-
-    // 2. Try to load saved game state
-    const savedState = loadGameState();
-    if (savedState) {
-        console.log("Restoring saved game state...");
-        if (savedState.devices) setDevices(savedState.devices);
-        if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
-        if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
-        if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
+        if (!hasAccess) {
+            console.warn("Storage access not granted. Game progress will not persist after reload.");
+        } else {
+             // 2. Only try to load if access was granted
+            const savedState = loadGameState();
+            if (savedState) {
+                console.log("Restoring saved game state...");
+                if (savedState.devices) setDevices(savedState.devices);
+                if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
+                if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
+                if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
+            }
+        }
+    } catch (e) {
+        console.error("Error during storage initialization:", e);
+        setStorageEnabled(false);
     }
 
     setShowIntro(false);

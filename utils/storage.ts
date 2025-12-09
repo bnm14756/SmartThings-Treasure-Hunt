@@ -12,28 +12,33 @@ export const tryToAccessStorage = async (): Promise<boolean> => {
 
   // 1. Check if Storage Access API is supported
   // @ts-ignore
-  if (document.hasStorageAccess && document.requestStorageAccess) {
+  const apiSupported = typeof document.hasStorageAccess === 'function' && typeof document.requestStorageAccess === 'function';
+  
+  if (apiSupported) {
     try {
       // 2. Check if we already have access
       // @ts-ignore
-      const hasAccess = await document.hasStorageAccess();
+      const hasAccess = await document.hasStorageAccess().catch((e) => {
+          console.warn("hasStorageAccess check failed:", e);
+          return false;
+      });
       
-      if (!hasAccess) {
+      if (hasAccess) {
+        console.log("Storage access already active.");
+      } else {
         // 3. Request access (requires user gesture)
         // @ts-ignore
         await document.requestStorageAccess();
         console.log("Storage access granted via requestStorageAccess API.");
-      } else {
-        console.log("Storage access already granted.");
       }
     } catch (error) {
-      // 4. Handle denial or error
-      // If the prompt is dismissed or denied, this catch block runs.
-      // returning false ensures we don't try to access localStorage below.
-      console.warn("Storage access denied by browser policy:", error);
+      // 4. Handle denial or error - returning false prevents using storage and avoids crashing
+      console.warn("Storage access denied or failed:", error);
       hasStoragePermission = false;
       return false;
     }
+  } else {
+      console.log("Storage Access API not supported in this browser. Attempting direct access.");
   }
 
   // 5. Verification: Actually try to use localStorage
@@ -65,9 +70,7 @@ export const saveGameState = (state: any) => {
   } catch (e) {
     console.error("Failed to save game state:", e);
     // If saving fails (e.g. quota exceeded or permission revoked), mark as lost
-    if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'SecurityError')) {
-        hasStoragePermission = false;
-    }
+    hasStoragePermission = false;
   }
 };
 
