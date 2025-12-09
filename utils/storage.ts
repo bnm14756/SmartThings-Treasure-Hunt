@@ -1,64 +1,78 @@
-// Module-level flag to track permission status
+// Module-level flag to track verified permission status
 let hasStoragePermission = false;
 
+/**
+ * Attempts to request storage access from the browser.
+ * This must be called inside a user gesture (e.g., click event handler).
+ */
 export const tryToAccessStorage = async (): Promise<boolean> => {
   if (typeof document === 'undefined') return false;
 
-  // 1. Check for Storage Access API availability
-  if ('hasStorageAccess' in document && 'requestStorageAccess' in document) {
+  console.log("Requesting storage access...");
+
+  // 1. Check if Storage Access API is supported
+  // @ts-ignore
+  if (document.hasStorageAccess && document.requestStorageAccess) {
     try {
-      // @ts-ignore - TypeScript definition might be missing in some envs
+      // 2. Check if we already have access
+      // @ts-ignore
       const hasAccess = await document.hasStorageAccess();
+      
       if (!hasAccess) {
-        // Request access - must be called inside a user gesture (e.g., click handler)
+        // 3. Request access (requires user gesture)
         // @ts-ignore
         await document.requestStorageAccess();
-        console.log("Storage access granted via requestStorageAccess");
+        console.log("Storage access granted via requestStorageAccess API.");
+      } else {
+        console.log("Storage access already granted.");
       }
     } catch (error) {
-      console.warn("Storage access API denied or failed:", error);
-      // CRITICAL FIX: If request fails, we MUST return false immediately.
-      // Attempting to access localStorage after a denied request causes 
-      // "Error: Access to storage is not allowed from this context"
+      // 4. Handle denial or error
+      // If the prompt is dismissed or denied, this catch block runs.
+      // returning false ensures we don't try to access localStorage below.
+      console.warn("Storage access denied by browser policy:", error);
       hasStoragePermission = false;
       return false;
     }
   }
-  
-  // 2. Verification Test: Actually try to use localStorage
-  // Only reached if hasStorageAccess was true or requestStorageAccess succeeded (or API not supported)
+
+  // 5. Verification: Actually try to use localStorage
+  // This catches cases where the API isn't supported but storage is blocked,
+  // or where the API said "yes" but it still fails (e.g., private browsing).
   try {
-      const TEST_KEY = 'st_storage_test';
-      localStorage.setItem(TEST_KEY, '1');
-      localStorage.removeItem(TEST_KEY);
-      
-      // If we reached here without error, we have access
-      hasStoragePermission = true;
-      console.log("Storage verification successful.");
-      return true;
+    const TEST_KEY = 'st_access_check';
+    localStorage.setItem(TEST_KEY, 'verified');
+    localStorage.removeItem(TEST_KEY);
+    
+    console.log("LocalStorage verification successful.");
+    hasStoragePermission = true;
+    return true;
   } catch (e) {
-      // This catches the actual "Access to storage is not allowed" error if it happens here
-      console.warn("LocalStorage verification failed. Running in memory-only mode.", e);
-      hasStoragePermission = false;
-      return false;
+    console.error("LocalStorage verification failed. Running in non-persistent mode.", e);
+    hasStoragePermission = false;
+    return false;
   }
 };
 
 const STORAGE_KEY = 'st_treasure_hunt_save_v1';
 
 export const saveGameState = (state: any) => {
-  // Guard: Do not attempt if we don't have verified permission
+  // Guard: Only save if we have verified permission
   if (!hasStoragePermission) return;
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
     console.error("Failed to save game state:", e);
+    // If saving fails (e.g. quota exceeded or permission revoked), mark as lost
+    if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'SecurityError')) {
+        hasStoragePermission = false;
+    }
   }
 };
 
 export const loadGameState = () => {
-  // Guard: Do not attempt if we don't have verified permission
+  // Guard: Only load if we have verified permission
   if (!hasStoragePermission) return null;
 
   try {
@@ -71,7 +85,7 @@ export const loadGameState = () => {
 };
 
 export const clearGameState = () => {
-  // Guard: Do not attempt if we don't have verified permission
+  // Guard: Only clear if we have verified permission
   if (!hasStoragePermission) return;
 
   try {
