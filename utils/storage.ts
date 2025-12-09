@@ -2,62 +2,43 @@
 let hasStoragePermission = false;
 
 /**
- * Attempts to request storage access from the browser.
- * This must be called inside a user gesture (e.g., click event handler).
+ * 저장소 접근 권한을 요청하고, 허용되면 true를 반환합니다.
+ * MUST be called inside a user gesture (e.g., click event handler).
  */
-export const tryToAccessStorage = async (): Promise<boolean> => {
+export async function requestStorageAccess(): Promise<boolean> {
   if (typeof document === 'undefined') return false;
 
-  console.log("Requesting storage access...");
-
-  // 1. Check if Storage Access API is supported
+  // 1. API 지원 여부 확인
   // @ts-ignore
-  const apiSupported = typeof document.hasStorageAccess === 'function' && typeof document.requestStorageAccess === 'function';
-  
-  if (apiSupported) {
-    try {
-      // 2. Check if we already have access
-      // @ts-ignore
-      const hasAccess = await document.hasStorageAccess().catch((e) => {
-          console.warn("hasStorageAccess check failed:", e);
-          return false;
-      });
-      
-      if (hasAccess) {
-        console.log("Storage access already active.");
-      } else {
-        // 3. Request access (requires user gesture)
-        // @ts-ignore
-        await document.requestStorageAccess();
-        console.log("Storage access granted via requestStorageAccess API.");
-      }
-    } catch (error) {
-      // 4. Handle denial or error - returning false prevents using storage and avoids crashing
-      console.warn("Storage access denied or failed:", error);
-      hasStoragePermission = false;
-      return false;
-    }
-  } else {
-      console.log("Storage Access API not supported in this browser. Attempting direct access.");
+  if (!document.requestStorageAccess) {
+    return true;
   }
 
-  // 5. Verification: Actually try to use localStorage
-  // This catches cases where the API isn't supported but storage is blocked,
-  // or where the API said "yes" but it still fails (e.g., private browsing).
+  // 2. 이미 권한이 있는지 확인
   try {
-    const TEST_KEY = 'st_access_check';
-    localStorage.setItem(TEST_KEY, 'verified');
-    localStorage.removeItem(TEST_KEY);
-    
-    console.log("LocalStorage verification successful.");
+    // @ts-ignore
+    if (await document.hasStorageAccess()) {
+      hasStoragePermission = true;
+      return true;
+    }
+  } catch (e) {
+    console.warn("hasStorageAccess 검사 중 오류, 권한 요청 시도");
+  }
+
+  // 3. 권한 요청
+  try {
+    // **주의**: 이 요청은 사용자 상호 작용(클릭 등)이 있을 때 성공률이 높습니다.
+    // @ts-ignore
+    await document.requestStorageAccess();
+    console.log("Storage Access: 권한 승인됨.");
     hasStoragePermission = true;
     return true;
-  } catch (e) {
-    console.error("LocalStorage verification failed. Running in non-persistent mode.", e);
+  } catch (error) {
+    console.error("Storage Access: 권한 거부됨. 서드파티 iFrame 차단.");
     hasStoragePermission = false;
     return false;
   }
-};
+}
 
 const STORAGE_KEY = 'st_treasure_hunt_save_v1';
 
@@ -70,7 +51,9 @@ export const saveGameState = (state: any) => {
   } catch (e) {
     console.error("Failed to save game state:", e);
     // If saving fails (e.g. quota exceeded or permission revoked), mark as lost
-    hasStoragePermission = false;
+    if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'SecurityError')) {
+        hasStoragePermission = false;
+    }
   }
 };
 

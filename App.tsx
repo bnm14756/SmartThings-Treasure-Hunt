@@ -9,7 +9,7 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
-import { tryToAccessStorage, saveGameState, loadGameState, clearGameState } from './utils/storage';
+import { requestStorageAccess, saveGameState, loadGameState, clearGameState } from './utils/storage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -40,7 +40,7 @@ const App: React.FC = () => {
   const handleIntroComplete = async () => {
     try {
         // 1. Try to get storage access permissions safely
-        const hasAccess = await tryToAccessStorage();
+        const hasAccess = await requestStorageAccess();
         setStorageEnabled(hasAccess);
 
         if (!hasAccess) {
