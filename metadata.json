@@ -1,0 +1,5 @@
+{
+  "name": "SmartThings Treasure Hunt",
+  "description": "A gamified virtual home experience to learn SmartThings features including device control, automation, and life services.",
+  "requestFramePermissions": []
+}
