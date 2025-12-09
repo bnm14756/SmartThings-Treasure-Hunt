@@ -9,10 +9,11 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap } from 'lucide-react';
+import { tryToAccessStorage, saveGameState, loadGameState, clearGameState } from './utils/storage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  // Initialize with a fresh copy of INITIAL_DEVICES to ensure restart works cleanly
+  // Initialize with a fresh copy of INITIAL_DEVICES
   const [devices, setDevices] = useState<Device[]>(INITIAL_DEVICES.map(d => ({...d})));
   const [currentMissionIndex, setCurrentMissionIndex] = useState(0);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -31,6 +32,42 @@ const App: React.FC = () => {
   // Calculate Total Energy
   const totalPower = devices.reduce((acc, d) => acc + (d.isOn ? d.powerConsumption : 0), 0);
   const SAFE_POWER_THRESHOLD = 300;
+
+  // --- Storage & Initialization Logic ---
+  
+  // Handle Intro Completion - This is a User Gesture, so we can request storage access here
+  const handleIntroComplete = async () => {
+    // 1. Try to get storage access permissions safely
+    await tryToAccessStorage();
+
+    // 2. Try to load saved game state
+    const savedState = loadGameState();
+    if (savedState) {
+        console.log("Restoring saved game state...");
+        if (savedState.devices) setDevices(savedState.devices);
+        if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
+        if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
+        if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
+    }
+
+    setShowIntro(false);
+  };
+
+  // Auto-Save Effect
+  useEffect(() => {
+    if (!showIntro) {
+        const stateToSave = {
+            devices,
+            currentMissionIndex,
+            isGameClear,
+            avatarPosition
+        };
+        saveGameState(stateToSave);
+    }
+  }, [devices, currentMissionIndex, isGameClear, showIntro, avatarPosition]);
+
+
+  // --- Game Logic ---
 
   // Keyboard Movement
   useEffect(() => {
@@ -64,8 +101,6 @@ const App: React.FC = () => {
   // Check Game Clear Condition (Energy Goal)
   useEffect(() => {
       if (!isGameClear && !showIntro && totalPower <= SAFE_POWER_THRESHOLD) {
-          // If all main missions are done OR we just achieved the energy goal in the last stage
-          // For simplicity, if power is low enough, we consider it a win if we are past the tutorial stage
           if (currentMissionIndex >= 2) {
               setTimeout(() => {
                   setIsGameClear(true);
@@ -125,25 +160,23 @@ const App: React.FC = () => {
   };
 
   const runRoutine = (routineId: string) => {
-    // Routine logic to turn things off
     const routine = ROUTINES.find(r => r.id === routineId);
     if (!routine) return;
 
-    if (routineId === 'routine-1') { // Eco Mode - Turn off almost everything
+    if (routineId === 'routine-1') { // Eco Mode
          setDevices(prev => prev.map(d => {
-             if (d.type === 'refrigerator') return d; // Keep fridge on
+             if (d.type === 'refrigerator') return d; 
              return { ...d, isOn: false };
          }));
     } else if (routineId === 'routine-2') { // Away Mode
         setDevices(prev => prev.map(d => {
-            if (d.type === 'ac') return { ...d, value: 27, status: 'Fan Only', isOn: true }; // Eco mode for AC
+            if (d.type === 'ac') return { ...d, value: 27, status: 'Fan Only', isOn: true };
             if (d.type === 'light') return { ...d, isOn: false };
             if (d.type === 'tv') return { ...d, isOn: false };
             return d;
         }));
     }
     
-    // Provide visual feedback
     alert(`[SmartThings] ${routine.name}가 실행되었습니다.\n기기 제어 신호가 전송되었습니다.`);
   };
 
@@ -157,6 +190,7 @@ const App: React.FC = () => {
   };
 
   const resetGame = () => {
+      clearGameState(); // Clear storage
       setDevices(INITIAL_DEVICES.map(d => ({...d})));
       setCurrentMissionIndex(0);
       setActiveTab('home');
@@ -164,7 +198,7 @@ const App: React.FC = () => {
       setIsGameClear(false);
       setShowSuccessModal(false);
       setSelectedDevice(null);
-      setShowIntro(true);
+      setShowIntro(true); // Will trigger intro again, but storage is cleared so no load
       setNearbyDevice(null);
   };
 
@@ -223,7 +257,7 @@ const App: React.FC = () => {
       
       {/* Intro Overlay */}
       {showIntro && (
-          <IntroOverlay onComplete={() => setShowIntro(false)} />
+          <IntroOverlay onComplete={handleIntroComplete} />
       )}
       
       {/* Main Content Area */}
