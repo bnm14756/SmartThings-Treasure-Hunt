@@ -4,8 +4,6 @@ let hasStoragePermission = false;
 export const tryToAccessStorage = async (): Promise<boolean> => {
   if (typeof document === 'undefined') return false;
 
-  let granted = false;
-
   // 1. Check for Storage Access API availability
   if ('hasStorageAccess' in document && 'requestStorageAccess' in document) {
     try {
@@ -17,20 +15,18 @@ export const tryToAccessStorage = async (): Promise<boolean> => {
         await document.requestStorageAccess();
         console.log("Storage access granted via requestStorageAccess");
       }
-      granted = true;
     } catch (error) {
       console.warn("Storage access API denied or failed:", error);
-      // Even if API fails, we might still have access in some contexts (or not), 
-      // so we don't return false immediately, but proceed to verification.
-      granted = false;
+      // CRITICAL FIX: If request fails, we MUST return false immediately.
+      // Attempting to access localStorage after a denied request causes 
+      // "Error: Access to storage is not allowed from this context"
+      hasStoragePermission = false;
+      return false;
     }
-  } else {
-    // API not supported (standard/legacy browsers), assume we might have access
-    granted = true;
   }
   
   // 2. Verification Test: Actually try to use localStorage
-  // This is the most reliable way to check if 'Access to storage is not allowed' will happen.
+  // Only reached if hasStorageAccess was true or requestStorageAccess succeeded (or API not supported)
   try {
       const TEST_KEY = 'st_storage_test';
       localStorage.setItem(TEST_KEY, '1');
@@ -41,6 +37,7 @@ export const tryToAccessStorage = async (): Promise<boolean> => {
       console.log("Storage verification successful.");
       return true;
   } catch (e) {
+      // This catches the actual "Access to storage is not allowed" error if it happens here
       console.warn("LocalStorage verification failed. Running in memory-only mode.", e);
       hasStoragePermission = false;
       return false;
