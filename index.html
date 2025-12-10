@@ -8,8 +8,37 @@
     
     <script>
       (function() {
-        // 보안 오류 강제 무시 스크립트
-        // 저장소(Storage) 접근 차단 오류가 발생해도 앱이 멈추지 않도록 합니다.
+        // Storage Access Error Fix
+        // This script aggressively mocks localStorage and sessionStorage to prevent 
+        // "Access to storage is not allowed" errors in sandboxed iframes or private modes.
+        try {
+          var memStorage = {};
+          var storageShim = {
+            _data: memStorage,
+            getItem: function(key) { return memStorage[key] || null; },
+            setItem: function(key, value) { memStorage[key] = String(value); },
+            removeItem: function(key) { delete memStorage[key]; },
+            clear: function() { memStorage = {}; },
+            key: function(index) { return Object.keys(memStorage)[index] || null; },
+            get length() { return Object.keys(memStorage).length; }
+          };
+
+          // Attempt to override the global storage properties
+          // Using Object.defineProperty to bypass read-only restrictions if possible
+          try {
+            Object.defineProperty(window, 'localStorage', { value: storageShim, writable: true, configurable: true });
+            Object.defineProperty(window, 'sessionStorage', { value: storageShim, writable: true, configurable: true });
+          } catch(err) {
+            // If defineProperty fails, try direct assignment (might fail in strict mode but worth a shot)
+            try { window.localStorage = storageShim; } catch(e) {}
+            try { window.sessionStorage = storageShim; } catch(e) {}
+          }
+        } catch (e) {
+          console.warn("Storage shim failed:", e);
+        }
+
+        // Fallback: Aggressive Error Suppression
+        // If the shim didn't work and the browser still throws errors, we catch and suppress them.
         function suppressError(e) {
           var msg = '';
           if (e && e.reason) {
@@ -18,11 +47,10 @@
              msg = e.message;
           }
           
-          // 저장소 접근 관련, 보안 관련, 할당량 관련 오류 메시지 감지
           if (/Access to storage|SecurityError|localStorage|sessionStorage|quota|denied/i.test(msg)) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            console.warn('Storage/Security error suppressed by index.html handler.');
+            console.warn('Storage/Security error suppressed to keep app running.');
             return true;
           }
         }
