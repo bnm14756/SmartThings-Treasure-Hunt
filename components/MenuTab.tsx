@@ -22,10 +22,27 @@ export const MenuTab: React.FC<MenuTabProps> = ({ currentState, onLoadGame, onRe
 
   const handleCopy = () => {
     if (!saveCode) return;
-    navigator.clipboard.writeText(saveCode).then(() => {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    });
+    
+    // Defensive clipboard handling
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard API unavailable");
+      }
+      
+      navigator.clipboard.writeText(saveCode)
+        .then(() => {
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2000);
+        })
+        .catch((err) => {
+          console.warn("Clipboard write failed:", err);
+          // Fallback: Just let the user select and copy manually since we showed the code
+          alert("클립보드 복사에 실패했습니다. 코드를 직접 선택해서 복사해주세요.");
+        });
+    } catch (e) {
+      console.warn("Clipboard error:", e);
+      alert("이 브라우저에서는 자동 복사를 지원하지 않습니다. 코드를 직접 복사해주세요.");
+    }
   };
 
   const handleLoad = () => {
@@ -68,7 +85,7 @@ export const MenuTab: React.FC<MenuTabProps> = ({ currentState, onLoadGame, onRe
         {saveCode ? (
           <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
             <p className="text-xs text-gray-500 mb-1">아래 코드를 복사해서 보관하세요:</p>
-            <div className="bg-white p-2 rounded border border-gray-100 text-[10px] font-mono break-all max-h-24 overflow-y-auto mb-2 text-gray-600">
+            <div className="bg-white p-2 rounded border border-gray-100 text-[10px] font-mono break-all max-h-24 overflow-y-auto mb-2 text-gray-600 select-all">
               {saveCode}
             </div>
             <button 

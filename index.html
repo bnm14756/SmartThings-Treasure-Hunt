@@ -6,41 +6,62 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
-      // ERROR SUPPRESSION: Prevent "Access to storage is not allowed" from cluttering the console.
+      // CRITICAL FIX: Storage Polyfill
+      // This immediately patches window.localStorage and window.sessionStorage.
+      // If access is denied (security error), it replaces them with a safe in-memory object.
       (function() {
-        const _error = console.error;
-        const _warn = console.warn;
-        const _log = console.log;
-
-        function isIgnored(args) {
-          try {
-            const msg = args.map(String).join(' ').toLowerCase();
-            return msg.includes('access to storage is not allowed') || 
-                   msg.includes('cdn.tailwindcss.com') ||
-                   msg.includes('tailwind css');
-          } catch(e) { return false; }
+        function createMemoryStorage() {
+          return {
+            _data: {},
+            getItem: function(key) { return this._data[key] || null; },
+            setItem: function(key, value) { this._data[key] = String(value); },
+            removeItem: function(key) { delete this._data[key]; },
+            clear: function() { this._data = {}; },
+            key: function(i) { return Object.keys(this._data)[i] || null; },
+            get length() { return Object.keys(this._data).length; }
+          };
         }
 
-        console.error = function(...args) { if (!isIgnored(args)) _error.apply(console, args); };
-        console.warn = function(...args) { if (!isIgnored(args)) _warn.apply(console, args); };
-        console.log = function(...args) { if (!isIgnored(args)) _log.apply(console, args); };
+        var storageBlocked = false;
+        try {
+          var x = '__test__';
+          window.localStorage.setItem(x, x);
+          window.localStorage.removeItem(x);
+        } catch (e) {
+          storageBlocked = true;
+        }
 
-        window.addEventListener('unhandledrejection', function(e) {
-           const msg = e.reason ? String(e.reason) : '';
-           if (msg.includes('Access to storage is not allowed')) {
-             e.preventDefault();
-             e.stopImmediatePropagation();
-           }
-        });
-        
-        window.addEventListener('error', function(e) {
-           const msg = e.message ? String(e.message) : '';
-           if (msg.includes('Access to storage is not allowed')) {
-             e.preventDefault();
-             e.stopImmediatePropagation();
-           }
-        });
+        if (storageBlocked) {
+          console.warn('⚠️ Storage access blocked by browser. Activating Memory Storage Polyfill to prevent crashes.');
+          
+          try {
+            // Attempt to override the properties
+            Object.defineProperty(window, 'localStorage', { 
+              value: createMemoryStorage(), 
+              configurable: true, 
+              enumerable: true, 
+              writable: true 
+            });
+            Object.defineProperty(window, 'sessionStorage', { 
+              value: createMemoryStorage(), 
+              configurable: true, 
+              enumerable: true, 
+              writable: true 
+            });
+          } catch(e) {
+            console.error('Failed to polyfill storage:', e);
+          }
+        }
       })();
+    </script>
+    <script>
+      // Global Error Suppressor for remaining noise
+      window.addEventListener('unhandledrejection', function(e) {
+         const msg = e.reason ? String(e.reason) : '';
+         if (msg.includes('Access to storage is not allowed') || msg.includes('QuotaExceededError')) {
+           e.preventDefault();
+         }
+      });
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
