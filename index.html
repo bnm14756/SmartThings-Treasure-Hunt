@@ -8,66 +8,73 @@
     
     <script>
       (function() {
-        // --- Strategy: Pre-emptive Neutralization ---
-        // 브라우저의 저장소 접근 차단 오류를 원천 봉쇄합니다.
-        
-        // 1. Global Error Killer (전역 오류 사살)
-        // 저장소 관련 오류가 발생하면 브라우저가 실행을 멈추기 전에 오류를 없앱니다.
-        function killError(e) {
+        // --- Strategy: Ultimate Defense ---
+        // 1. Silent Error Killer
+        // We prevent default behavior for storage errors to stop the browser from halting execution.
+        var killError = function(e) {
           var msg = '';
-          if (e.reason) msg = typeof e.reason === 'object' ? (e.reason.message || '') : String(e.reason);
-          else if (e.message) msg = e.message;
-          else if (e.error) msg = e.error.message || '';
-
-          // 저장소(Storage), 보안(Security), 할당량(Quota), 쿠키(Cookie) 관련 오류 필터링
-          if (/Access to storage|Security|quota|denied|insecure|Database|cookies/i.test(msg)) {
+          if (e && e.reason) msg = typeof e.reason === 'object' ? (e.reason.message || '') : String(e.reason);
+          else if (e && e.message) msg = e.message;
+          
+          if (msg && (/Access to storage|Security|quota|denied|insecure|Database|cookies/i.test(msg))) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            if (console && console.warn) console.warn('Suppressed fatal storage error to keep app alive:', msg);
             return true;
           }
-        }
+        };
+        
         window.addEventListener('error', killError, true);
-        window.addEventListener('unhandledrejection', killError, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          if (killError(e)) {
+            // If we suppressed a promise error, we prevent the "Uncaught (in promise)" log
+            e.preventDefault();
+          }
+        }, true);
 
-        // 2. Mock Storage Objects (가짜 메모리 저장소)
-        // 저장소 기능이 필요한 라이브러리가 오류 없이 작동하도록 빈 껍데기를 제공합니다.
+        // 2. Storage Shim (The "Dummy" Strategy)
+        // We replace storage objects with no-op versions so libraries don't crash when using them.
+        var noop = function() {};
         var dummyStorage = {
           getItem: function() { return null; },
-          setItem: function() { },
-          removeItem: function() { },
-          clear: function() { },
+          setItem: noop,
+          removeItem: noop,
+          clear: noop,
           key: function() { return null; },
           get length() { return 0; }
         };
 
-        // 3. Aggressive Shim Injection (강제 주입)
-        // window 객체의 저장소 속성을 가짜 객체로 덮어씌웁니다.
-        // 각 시도마다 try-catch를 걸어, 하나가 실패해도 나머지는 적용되도록 합니다.
+        // Try every possible way to inject the shim
+        var props = ['localStorage', 'sessionStorage'];
+        props.forEach(function(prop) {
+          try {
+            Object.defineProperty(window, prop, {
+              value: dummyStorage,
+              configurable: true,
+              writable: true
+            });
+          } catch(e) {
+            // Fallback: try direct assignment
+            try { window[prop] = dummyStorage; } catch(e2) {}
+          }
+        });
+
+        // Patch IndexedDB
         try {
-          try { Object.defineProperty(window, 'localStorage', { value: dummyStorage, configurable: true, writable: true }); } catch(e) {}
-          try { Object.defineProperty(window, 'sessionStorage', { value: dummyStorage, configurable: true, writable: true }); } catch(e) {}
-          
-          try { window.localStorage = dummyStorage; } catch(e) {}
-          try { window.sessionStorage = dummyStorage; } catch(e) {}
-          
-          // IndexedDB까지 무력화
-          try { 
-            window.indexedDB = { 
-              open: function() { 
-                return { 
-                  result: { 
-                    createObjectStore: function(){}, 
-                    transaction: function(){ return { objectStore: function(){ return { put: function(){}, get: function(){} } } } } 
-                  },
-                  addEventListener: function(evt, cb) { if(evt === 'success') cb({ target: { result: this.result } }); }
-                }; 
-              } 
-            }; 
-          } catch(e) {}
-        } catch(mainErr) {
-          // 주입 실패 시 위의 killError 리스너가 최후의 보루 역할을 합니다.
-        }
+          window.indexedDB = {
+            open: function() {
+              return {
+                result: {
+                  createObjectStore: function() { return { createIndex: noop }; },
+                  transaction: function() { return { objectStore: function() { return { put: noop, get: noop, delete: noop, add: noop }; } }; }
+                },
+                addEventListener: noop,
+                removeEventListener: noop,
+                onsuccess: null,
+                onerror: null
+              };
+            }
+          };
+        } catch(e) {}
       })();
     </script>
     
@@ -85,9 +92,34 @@
   <body>
     <div id="root">
       <style>
-        .loading-fallback { font-family: system-ui; height: 100vh; display: flex; align-items: center; justify-content: center; background: #f2f2f7; color: #8e8e93; font-weight: 500; }
+        .loading-fallback { 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+          height: 100vh; 
+          display: flex; 
+          flex-direction: column;
+          align-items: center; 
+          justify-content: center; 
+          background: #f2f2f7; 
+          color: #8e8e93; 
+          font-weight: 500; 
+        }
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #e5e5ea;
+          border-top-color: #007aff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       </style>
-      <div class="loading-fallback">Loading SmartThings Virtual Home...</div>
+      <div class="loading-fallback">
+        <div class="loading-spinner"></div>
+        <div>Loading SmartThings Virtual Home...</div>
+      </div>
     </div>
+    <!-- Vite usually injects the entry point here -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
