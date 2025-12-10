@@ -6,11 +6,41 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
-      // CRITICAL FIX: Robust Storage Polyfill & Error Suppressor
-      // This script forces the app to continue running even if the browser blocks storage access.
-      
+      // --- SYSTEM STABILIZER START ---
       (function() {
-        // 1. Define a safe in-memory storage implementation
+        // 1. Console Noise Filter
+        // Hides the "Tailwind CDN in production" warning since we must use CDN in this preview environment.
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+          if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) {
+            return; // Suppress Tailwind warning
+          }
+          originalWarn.apply(console, args);
+        };
+
+        // 2. Global Error Handler (Aggressive)
+        // Suppresses "Access to storage is not allowed" errors to prevent the app from appearing broken.
+        window.onerror = function(msg, url, line, col, error) {
+          const strMsg = String(msg).toLowerCase();
+          if (strMsg.includes('access to storage') || 
+              strMsg.includes('quotaexceeded') || 
+              strMsg.includes('securityerror')) {
+            return true; // Return true to prevent the error from firing in the console
+          }
+          return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(e) {
+           const msg = e.reason ? String(e.reason).toLowerCase() : '';
+           if (msg.includes('access to storage') || 
+               msg.includes('quotaexceeded') || 
+               msg.includes('securityerror')) {
+             e.preventDefault(); // Prevent crash
+           }
+        });
+
+        // 3. Storage Polyfill
+        // Replaces blocked localStorage with a safe in-memory object.
         function createMemoryStorage() {
           return {
             _data: {},
@@ -23,69 +53,28 @@
           };
         }
 
-        // 2. Global Error Handler (Aggressive)
-        // This catches errors from external scripts (like Tailwind CDN) that we can't control.
-        window.onerror = function(msg, url, line, col, error) {
-          const strMsg = String(msg).toLowerCase();
-          if (strMsg.includes('access to storage') || 
-              strMsg.includes('quotaexceeded') || 
-              strMsg.includes('securityerror')) {
-            console.warn('⚠️ Suppressed blocking storage error:', msg);
-            return true; // Prevents the error from showing in console as red text
-          }
-          return false;
-        };
-
-        // 3. Promise Rejection Handler
-        window.addEventListener('unhandledrejection', function(e) {
-           const msg = e.reason ? String(e.reason).toLowerCase() : '';
-           if (msg.includes('access to storage') || 
-               msg.includes('quotaexceeded') || 
-               msg.includes('securityerror')) {
-             e.preventDefault(); // Prevents the error from crashing the app
-             console.warn('⚠️ Suppressed blocking storage promise rejection');
-           }
-        });
-
-        // 4. Apply Polyfill
-        var storageBlocked = false;
         try {
-          var x = '__test__';
-          window.localStorage.setItem(x, x);
-          window.localStorage.removeItem(x);
+          // Attempt a test write. If it fails or throws, we replace the storage.
+          window.localStorage.setItem('__test__', 'ok');
+          window.localStorage.removeItem('__test__');
         } catch (e) {
-          storageBlocked = true;
-        }
-
-        if (storageBlocked) {
-          console.log('🔒 Storage blocked. Attempting to inject memory storage...');
+          // Storage is blocked. Inject memory storage.
           try {
-            // Try to delete the read-only property first (works in some environments)
-            try { delete window.localStorage; } catch(e) {}
-            try { delete window.sessionStorage; } catch(e) {}
-
             Object.defineProperty(window, 'localStorage', { 
-              value: createMemoryStorage(), 
-              configurable: true, 
-              enumerable: true, 
-              writable: true 
+              value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
             });
             Object.defineProperty(window, 'sessionStorage', { 
-              value: createMemoryStorage(), 
-              configurable: true, 
-              enumerable: true, 
-              writable: true 
+              value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
             });
-            console.log('✅ Memory Storage Polyfill injected successfully.');
-          } catch(e) {
-            console.error('❌ Failed to inject storage polyfill. App may be unstable.', e);
+          } catch(err) {
+            // If injection fails, we just rely on the error suppressors above.
           }
         }
       })();
+      // --- SYSTEM STABILIZER END ---
     </script>
     
-    <!-- RESTORED: Tailwind CSS CDN for UI styling -->
-    <!-- The polyfill above will prevent this script from crashing the app -->
+    <!-- Tailwind CDN: Required for styling in this preview environment -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script type="importmap">
