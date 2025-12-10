@@ -1,4 +1,4 @@
-import React, { Component, useState, useEffect, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, ErrorInfo, ReactNode } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
 import { VirtualMap } from './components/VirtualMap';
@@ -9,7 +9,7 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
-import { Trophy } from 'lucide-react';
+import { Trophy, Medal } from 'lucide-react';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -20,7 +20,7 @@ interface ErrorBoundaryState {
 }
 
 // Error Boundary: React 렌더링 중 발생하는 오류를 잡아 흰 화면을 방지합니다.
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
@@ -69,20 +69,21 @@ const AppContent: React.FC = () => {
   // Mission Logic
   const currentMissionId = MISSIONS.find(m => !completedMissions.includes(m.id))?.id;
   const currentMission = MISSIONS.find(m => m.id === currentMissionId);
+  const isGameClear = completedMissions.length === MISSIONS.length;
 
   useEffect(() => {
     if (showIntro) return;
 
     if (currentMission) {
         setGuideLines(currentMission.guideText);
-    } else {
+    } else if (isGameClear) {
         setGuideLines([
             '축하해! 모든 미션을 완료했어! 🎉',
-            '이제 우리 집은 에너지 효율 만점이야.',
+            '에너지 사용량이 적정량에 도달했어.',
             'SmartThings와 함께라면 전기 요금 걱정 끝!'
         ]);
     }
-  }, [currentMissionId, showIntro]);
+  }, [currentMissionId, showIntro, isGameClear]);
 
   // Check Mission Success Conditions
   useEffect(() => {
@@ -236,12 +237,37 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* Mission Progress Indicator (Floating) */}
-      {!showIntro && activeTab === 'home' && (
+      {/* Mission Progress Indicator (Floating Right) */}
+      {!showIntro && activeTab === 'home' && !isGameClear && (
         <div className="btn-floating" style={{ background: 'white', color: '#1c1c1e', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Trophy size={20} color={completedMissions.length === MISSIONS.length ? '#ffcc00' : '#8e8e93'} fill={completedMissions.length === MISSIONS.length ? 'currentColor' : 'none'} />
+            <Trophy size={20} color="#8e8e93" />
             <span style={{ fontWeight: 'bold' }}>미션 {completedMissions.length} / {MISSIONS.length}</span>
         </div>
+      )}
+
+      {/* Game Clear Achievement Badge (Floating Left) */}
+      {isGameClear && activeTab === 'home' && (
+          <div className="animate-fade-in" style={{ position: 'fixed', bottom: 100, left: 16, zIndex: 30 }}>
+            <div style={{ 
+                background: 'rgba(255,255,255,0.95)', 
+                backdropFilter: 'blur(10px)', 
+                padding: '10px 16px', 
+                borderRadius: '24px', 
+                boxShadow: '0 4px 16px rgba(255, 204, 0, 0.3)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                border: '2px solid #ffcc00' 
+            }}>
+                <div style={{ background: '#ffcc00', borderRadius: '50%', padding: 4 }}>
+                    <Medal size={20} color="white" fill="white" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '10px', color: '#8e8e93', fontWeight: 'bold' }}>ACHIEVEMENT</span>
+                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>에너지 지킴이</span>
+                </div>
+            </div>
+          </div>
       )}
 
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />

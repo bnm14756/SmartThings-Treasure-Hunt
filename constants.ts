@@ -28,7 +28,7 @@ export const MISSIONS: Mission[] = [
     guideText: [
       '큰일이야! 전기 요금 폭탄을 막아야 해! 💸',
       '우선 거실 TV **가까이로 이동**해줘.',
-      '그 다음 TV를 눌러 **[기기 추가]** 버튼을 누르고 전원을 꺼줘!'
+      '그 다음 TV를 눌러 **[기기 추가]** 버튼을 누르고 SmartThings로 꺼줘!'
     ],
     successCondition: (devices) => {
       const tv = devices.find(d => d.id === 'tv-1');
@@ -45,7 +45,7 @@ export const MISSIONS: Mission[] = [
     guideText: [
       '저기 에어프라이어가 켜져있어! 😱',
       '주방으로 **가까이 이동해서** 기기를 탭해봐.',
-      'SmartThings에 연결하고 얼른 꺼버리자!'
+      'SmartThings에 연결하고 전원을 관리해줘.'
     ],
     successCondition: (devices) => {
       const fryer = devices.find(d => d.id === 'airfryer-1');
@@ -61,8 +61,8 @@ export const MISSIONS: Mission[] = [
     requiredAction: 'life_check',
     guideText: [
       '아직 연결 안 된 기기들이 있어.',
-      '방을 돌아다니며 가까이 가서 연결해줘.',
-      '모두 끄고 "라이프" 탭에서 에너지 상태를 확인해봐!'
+      '방을 돌아다니며 가까이 가서 기기들을 연결해줘.',
+      '불필요한 전기를 줄여서 **적정 사용량(초록색)**을 맞춰주면 성공이야!'
     ],
     successCondition: (devices) => {
       // This condition is handled globally in App.tsx via energy calculation
