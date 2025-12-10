@@ -1,13 +1,16 @@
 
 import React from 'react';
 import { Device, Routine } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { Play, AlertTriangle, Leaf } from 'lucide-react';
 
 export const LifeTab: React.FC<{ devices: Device[]; onDeviceToggle: (id: string, isOn: boolean) => void }> = ({ devices, onDeviceToggle }) => {
   const energyData = devices.map(d => ({ name: d.name, value: d.isOn ? d.powerConsumption : 0, original: d })).filter(item => item.value > 0 || item.original.isConnected);
   const totalUsage = energyData.reduce((acc, curr) => acc + curr.value, 0);
   const isSafe = totalUsage <= 300;
+  
+  // Chart Configuration
+  const MAX_VAL = 2000; // Max wattage for chart scaling
+  const SAFE_LINE_PCT = (300 / MAX_VAL) * 100;
 
   return (
     <div className="page-container">
@@ -19,18 +22,33 @@ export const LifeTab: React.FC<{ devices: Device[]; onDeviceToggle: (id: string,
         </div>
         {!isSafe && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12}/> 에너지 과다 사용</div>}
         
-        <div style={{ height: 200, marginTop: 20 }}>
-            <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={energyData}>
-                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} interval={0} />
-                <ReferenceLine y={300} stroke="#22c55e" strokeDasharray="3 3" />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {energyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.value > 500 ? '#ef4444' : (isSafe ? '#22c55e' : '#007aff')} />
-                    ))}
-                </Bar>
-            </BarChart>
-            </ResponsiveContainer>
+        {/* CSS-only Bar Chart */}
+        <div style={{ height: '180px', marginTop: '24px', position: 'relative', borderBottom: '1px solid #e5e5ea', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', paddingBottom: '24px' }}>
+            {/* Safety Line */}
+            <div style={{ position: 'absolute', bottom: `calc(${SAFE_LINE_PCT}% + 24px)`, left: 0, right: 0, borderTop: '2px dashed #22c55e', opacity: 0.6, pointerEvents: 'none' }}>
+                <span style={{ position: 'absolute', right: 0, bottom: 2, fontSize: 10, color: '#22c55e', background: 'rgba(255,255,255,0.8)' }}>Safe (300W)</span>
+            </div>
+
+            {energyData.length === 0 ? (
+                <div style={{ width: '100%', textAlign: 'center', color: '#8e8e93', fontSize: 12, paddingBottom: 20 }}>데이터 없음</div>
+            ) : energyData.map((d, i) => {
+                const heightPct = Math.min((d.value / MAX_VAL) * 100, 100);
+                const isOver = d.value > 500;
+                return (
+                    <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', zIndex: 10 }}>
+                        <div style={{ 
+                            width: '24px', 
+                            height: `${Math.max(heightPct, 2)}%`, 
+                            background: isOver ? '#ef4444' : (isSafe ? '#22c55e' : '#007aff'), 
+                            borderRadius: '6px 6px 0 0',
+                            transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }} />
+                        <span style={{ position: 'absolute', bottom: 0, fontSize: 10, color: '#8e8e93', width: '40px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {d.name.split(' ')[0]}
+                        </span>
+                    </div>
+                );
+            })}
         </div>
       </div>
 

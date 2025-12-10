@@ -6,51 +6,7 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     
-    <script>
-    /* [NUCLEAR ERROR SUPPRESSION] */
-    /* 이 스크립트는 앱이 죽는 것을 방지하기 위해 모든 저장소 관련 에러를 강제로 삼킵니다. */
-    (function() {
-      // 1. 일반적인 동기 에러 차단 (Capturing Phase)
-      window.addEventListener('error', function(e) {
-        var msg = (e.message || '').toString().toLowerCase();
-        // 저장소, 접근 권한, 보안 관련 에러가 발생하면
-        if (msg.includes('storage') || msg.includes('access') || msg.includes('security') || msg.includes('quota') || msg.includes('sandboxed')) {
-          e.stopImmediatePropagation(); // 다른 핸들러로 전파 중단
-          e.preventDefault(); // 브라우저 기본 동작(콘솔 출력 및 앱 중단) 막기
-          console.warn('⚠️ [System] Storage error suppressed to keep app alive.');
-          return true;
-        }
-      }, true); // true = 캡처링 단계에서 미리 차단
-
-      // 2. 비동기(Promise) 에러 차단
-      window.addEventListener('unhandledrejection', function(e) {
-        var msg = (e.reason && e.reason.message ? e.reason.message : e.reason).toString().toLowerCase();
-        if (msg.includes('storage') || msg.includes('access') || msg.includes('security')) {
-          e.preventDefault(); // 에러 전파 막기
-          console.warn('⚠️ [System] Async storage error suppressed.');
-        }
-      });
-
-      // 3. 저장소 객체 가짜로 대체 (Try-Catch로 감싸서 이 과정 자체의 에러도 방지)
-      try {
-        var mock = {
-          _data: {},
-          getItem: function(k) { return this._data[k] || null; },
-          setItem: function(k, v) { this._data[k] = String(v); },
-          removeItem: function(k) { delete this._data[k]; },
-          clear: function() { this._data = {}; },
-          key: function(i) { return Object.keys(this._data)[i]; },
-          get length() { return Object.keys(this._data).length; }
-        };
-        
-        // 강제 덮어쓰기 시도
-        Object.defineProperty(window, 'localStorage', { value: mock, configurable: true, writable: true });
-        Object.defineProperty(window, 'sessionStorage', { value: mock, configurable: true, writable: true });
-      } catch(err) {
-        console.warn('Could not mock storage, relying on error suppressors.');
-      }
-    })();
-    </script>
+    <!-- No external CSS libraries. Pure CSS only. -->
     
     <script type="importmap">
 {
@@ -58,8 +14,7 @@
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1"
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
   }
 }
 </script>
