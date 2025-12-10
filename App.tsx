@@ -37,13 +37,13 @@ const App: React.FC = () => {
   // --- Storage & Initialization Logic ---
   
   // Handle Intro Completion
-  const handleIntroComplete = async () => {
+  const handleIntroComplete = () => {
     try {
-        // Initialize storage (checks if localStorage is allowed, otherwise falls back to memory)
-        const hasAccess = await initializeStorage();
+        // Initialize storage (Sync check)
+        const hasAccess = initializeStorage();
         setStorageEnabled(hasAccess);
 
-        // Try to load state regardless of persistent storage (memory storage might work for session)
+        // Try to load state
         const savedState = loadGameState();
         if (savedState) {
             console.log("Restoring saved game state...");
@@ -54,7 +54,6 @@ const App: React.FC = () => {
         }
     } catch (e) {
         console.error("Error during storage initialization:", e);
-        // Ensure we don't crash, just proceed without storage
         setStorageEnabled(false);
     }
 
