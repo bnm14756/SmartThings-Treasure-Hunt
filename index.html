@@ -7,75 +7,35 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     
     <script>
+      // 1. 가짜 저장소(Shim) 코드 완전 제거
+      // 2. 오류 무시(Suppression) 로직만 유지 및 강화
       (function() {
-        // --- Error Suppression System ---
-        function shouldSuppress(msg) {
-          if (!msg) return false;
-          // Suppress storage, security, and quota errors common in restricted iframes
-          return /Access to storage|SecurityError|localStorage|sessionStorage|quota|denied|The operation is insecure/i.test(msg);
-        }
-
-        // Handle synchronous errors
-        window.addEventListener('error', function(e) {
-          var msg = e.message || '';
-          if (e.error && e.error.message) msg = e.error.message;
-          
-          if (shouldSuppress(msg)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            console.warn('Suppressed storage error:', msg);
-            return true;
-          }
-        }, true);
-
-        // Handle async promise rejections (where "Uncaught (in promise)" comes from)
-        window.addEventListener('unhandledrejection', function(e) {
+        function ignoreStorageErrors(e) {
+          // 오류 메시지 추출
           var msg = '';
           if (e.reason) {
-            msg = typeof e.reason === 'object' ? (e.reason.message || String(e.reason)) : String(e.reason);
+             msg = typeof e.reason === 'object' ? (e.reason.message || '') : String(e.reason);
+          } else if (e.message) {
+             msg = e.message;
+          } else if (e.error && e.error.message) {
+             msg = e.error.message;
           }
-          if (shouldSuppress(msg)) {
-            e.preventDefault();
+
+          // 저장소 접근 차단(Access to storage), 보안(Security), 할당량(Quota) 관련 오류만 필터링
+          if (/Access to storage|SecurityError|localStorage|sessionStorage|quota|denied|insecure/i.test(msg)) {
+            // 브라우저의 기본 에러 처리를 막아(preventDefault) 앱이 멈추지 않게 함
+            e.preventDefault(); 
             e.stopImmediatePropagation();
-            console.warn('Suppressed storage promise rejection:', msg);
+            console.warn('보안 정책으로 인한 저장소 오류를 무시하고 앱을 실행합니다.');
+            return true;
           }
-        }, true);
-
-        // --- Storage Mocking System ---
-        try {
-          var mockStorage = {
-            _data: {},
-            getItem: function(key) { return this._data[key] || null; },
-            setItem: function(key, value) { this._data[key] = String(value); },
-            removeItem: function(key) { delete this._data[key]; },
-            clear: function() { this._data = {}; },
-            key: function(index) { return Object.keys(this._data)[index] || null; },
-            get length() { return Object.keys(this._data).length; }
-          };
-
-          // Try to patch the window object
-          var patch = function(prop) {
-            try {
-              // Try deleting to handle non-configurable properties on the instance
-              delete window[prop];
-              
-              Object.defineProperty(window, prop, {
-                value: mockStorage,
-                configurable: true,
-                writable: true
-              });
-            } catch(e) {
-              // Fallback: try direct assignment
-              try { window[prop] = mockStorage; } catch(z) {}
-            }
-          };
-
-          patch('localStorage');
-          patch('sessionStorage');
-
-        } catch(e) {
-          console.warn('Storage patching failed completely:', e);
         }
+
+        // 동기 오류(일반 JS 실행 오류) 감지
+        window.addEventListener('error', ignoreStorageErrors, true);
+        
+        // 비동기 오류(Promise 관련 오류) 감지 - 여기가 "Uncaught (in promise)"를 잡는 곳입니다.
+        window.addEventListener('unhandledrejection', ignoreStorageErrors, true);
       })();
     </script>
     

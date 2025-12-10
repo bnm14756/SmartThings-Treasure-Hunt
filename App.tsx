@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
 import { VirtualMap } from './components/VirtualMap';
@@ -9,9 +9,54 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
-import { Trophy, Link, Zap } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
-const App: React.FC = () => {
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+// Error Boundary: React 렌더링 중 발생하는 오류를 잡아 흰 화면을 방지합니다.
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn("React Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // 에러 발생 시에도 최소한의 UI를 렌더링하거나 자식 컴포넌트를 다시 그림
+      return (
+        <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+           <div className="card text-center p-4">
+             <h2>앱 실행 중</h2>
+             <p>일시적인 오류가 감지되었으나 계속 실행합니다.</p>
+             <button 
+               className="btn btn-primary mt-4" 
+               onClick={() => this.setState({ hasError: false })}
+             >
+               계속하기
+             </button>
+           </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [devices, setDevices] = useState<Device[]>(INITIAL_DEVICES);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -171,6 +216,14 @@ const App: React.FC = () => {
 
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 };
 
