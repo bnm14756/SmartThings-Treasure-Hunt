@@ -9,7 +9,7 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
-import { requestStorageAccess, saveGameState, loadGameState, clearGameState } from './utils/storage';
+import { initializeStorage, saveGameState, loadGameState, clearGameState } from './utils/storage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -36,28 +36,25 @@ const App: React.FC = () => {
 
   // --- Storage & Initialization Logic ---
   
-  // Handle Intro Completion - This is a User Gesture, so we can request storage access here
+  // Handle Intro Completion
   const handleIntroComplete = async () => {
     try {
-        // 1. Try to get storage access permissions safely
-        const hasAccess = await requestStorageAccess();
+        // Initialize storage (checks if localStorage is allowed, otherwise falls back to memory)
+        const hasAccess = await initializeStorage();
         setStorageEnabled(hasAccess);
 
-        if (!hasAccess) {
-            console.warn("Storage access not granted. Game progress will not persist after reload.");
-        } else {
-             // 2. Only try to load if access was granted
-            const savedState = loadGameState();
-            if (savedState) {
-                console.log("Restoring saved game state...");
-                if (savedState.devices) setDevices(savedState.devices);
-                if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
-                if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
-                if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
-            }
+        // Try to load state regardless of persistent storage (memory storage might work for session)
+        const savedState = loadGameState();
+        if (savedState) {
+            console.log("Restoring saved game state...");
+            if (savedState.devices) setDevices(savedState.devices);
+            if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
+            if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
+            if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
         }
     } catch (e) {
         console.error("Error during storage initialization:", e);
+        // Ensure we don't crash, just proceed without storage
         setStorageEnabled(false);
     }
 
@@ -66,7 +63,7 @@ const App: React.FC = () => {
 
   // Auto-Save Effect
   useEffect(() => {
-    if (!showIntro && storageEnabled) {
+    if (!showIntro) {
         const stateToSave = {
             devices,
             currentMissionIndex,
@@ -75,7 +72,7 @@ const App: React.FC = () => {
         };
         saveGameState(stateToSave);
     }
-  }, [devices, currentMissionIndex, isGameClear, showIntro, avatarPosition, storageEnabled]);
+  }, [devices, currentMissionIndex, isGameClear, showIntro, avatarPosition]);
 
 
   // --- Game Logic ---
@@ -271,11 +268,11 @@ const App: React.FC = () => {
           <IntroOverlay onComplete={handleIntroComplete} />
       )}
       
-      {/* Storage Warning Indicator */}
+      {/* Storage Warning Indicator (Only if memory fallback is active) */}
       {!storageEnabled && !showIntro && (
           <div className="fixed top-16 left-4 z-40 bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
               <SaveOff size={10} />
-              <span>저장 안됨</span>
+              <span>임시 저장 모드</span>
           </div>
       )}
       

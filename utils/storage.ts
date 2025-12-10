@@ -6,7 +6,7 @@ const STORAGE_KEY = 'st_treasure_hunt_save_v1';
 
 /**
  * Checks if localStorage is actually available for use.
- * Some browsers throw SecurityError when accessing localStorage in iframes.
+ * Returns false immediately if access is denied to prevent errors.
  */
 function isLocalStorageAvailable(): boolean {
   try {
@@ -20,31 +20,19 @@ function isLocalStorageAvailable(): boolean {
 }
 
 /**
- * Attempts to initialize storage access.
- * Returns true if persistence (localStorage) is available.
- * Returns false if falling back to in-memory storage.
+ * Initializes storage. 
+ * Safely determines if we can use localStorage or must fallback to memory.
+ * Does NOT try to use the Storage Access API to avoid "Uncaught (in promise)" errors in sandboxed iframes.
  */
-export async function requestStorageAccess(): Promise<boolean> {
-  // 1. Check if we already have access implicitly
+export async function initializeStorage(): Promise<boolean> {
+  // 1. Check if we have access implicitly
   if (isLocalStorageAvailable()) {
+    useMemoryOnly = false;
     return true;
   }
 
-  // 2. Try the Storage Access API if available
-  if (typeof document !== 'undefined' && 'requestStorageAccess' in document) {
-    try {
-      // @ts-ignore
-      await document.requestStorageAccess();
-      if (isLocalStorageAvailable()) {
-        return true;
-      }
-    } catch (e) {
-      console.warn("Storage Access API request failed or denied:", e);
-    }
-  }
-
-  // 3. Fallback to memory
-  console.warn("LocalStorage unavailable. Falling back to in-memory storage (session only).");
+  // 2. If not available, fallback immediately to memory without error
+  console.warn("LocalStorage unavailable (likely due to iframe restrictions). Switching to in-memory storage.");
   useMemoryOnly = true;
   return false;
 }
@@ -57,7 +45,7 @@ export const saveGameState = (state: any) => {
       localStorage.setItem(STORAGE_KEY, json);
       return;
     } catch (e) {
-      console.warn("Save failed, switching to memory storage:", e);
+      // Silent failover
       useMemoryOnly = true;
     }
   }
@@ -72,7 +60,7 @@ export const loadGameState = () => {
       const data = localStorage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : null;
     } catch (e) {
-      console.warn("Load failed, switching to memory storage:", e);
+      // Silent failover
       useMemoryOnly = true;
     }
   }
@@ -87,7 +75,7 @@ export const clearGameState = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {
-      console.warn("Clear failed:", e);
+      // Ignore
     }
   }
   delete memoryStorage[STORAGE_KEY];
