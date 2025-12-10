@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
@@ -10,7 +11,7 @@ import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
-import { saveGameState, loadGameState, clearGameState } from './utils/storage';
+import { saveGameState, loadGameState, clearGameState, requestStorageAccess } from './utils/storage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -38,6 +39,18 @@ const App: React.FC = () => {
   
   // Handle Intro Completion
   const handleIntroComplete = () => {
+    // SECURITY FIX: Request Storage Access on User Gesture
+    requestStorageAccess().then((granted) => {
+        if (granted) {
+            // If access granted, try to reload state from persistent storage
+            const savedState = loadGameState();
+            if (savedState) {
+                console.log("Storage access granted. Restoring state...");
+                restoreGameState(savedState);
+            }
+        }
+    });
+
     try {
         // Try to load state (Lazy load, safe from errors)
         const savedState = loadGameState();
@@ -60,7 +73,7 @@ const App: React.FC = () => {
     if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
   };
 
-  // Auto-Save Effect (to memory)
+  // Auto-Save Effect
   useEffect(() => {
     if (!showIntro) {
         const stateToSave = {

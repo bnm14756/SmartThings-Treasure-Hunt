@@ -9,11 +9,11 @@
       // --- SYSTEM STABILIZER START ---
       (function() {
         // 1. Console Noise Filter
-        // Hides the "Tailwind CDN in production" warning since we must use CDN in this preview environment.
         const originalWarn = console.warn;
         console.warn = function(...args) {
+          // Suppress Tailwind warning
           if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) {
-            return; // Suppress Tailwind warning
+            return;
           }
           originalWarn.apply(console, args);
         };
@@ -32,15 +32,16 @@
 
         window.addEventListener('unhandledrejection', function(e) {
            const msg = e.reason ? String(e.reason).toLowerCase() : '';
+           // Handle specific "Uncaught (in promise) Error: Access to storage..."
            if (msg.includes('access to storage') || 
                msg.includes('quotaexceeded') || 
                msg.includes('securityerror')) {
              e.preventDefault(); // Prevent crash
+             e.stopPropagation();
            }
         });
 
         // 3. Storage Polyfill
-        // Replaces blocked localStorage with a safe in-memory object.
         function createMemoryStorage() {
           return {
             _data: {},
@@ -54,11 +55,9 @@
         }
 
         try {
-          // Attempt a test write. If it fails or throws, we replace the storage.
           window.localStorage.setItem('__test__', 'ok');
           window.localStorage.removeItem('__test__');
         } catch (e) {
-          // Storage is blocked. Inject memory storage.
           try {
             Object.defineProperty(window, 'localStorage', { 
               value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
@@ -66,9 +65,7 @@
             Object.defineProperty(window, 'sessionStorage', { 
               value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
             });
-          } catch(err) {
-            // If injection fails, we just rely on the error suppressors above.
-          }
+          } catch(err) {}
         }
       })();
       // --- SYSTEM STABILIZER END ---
