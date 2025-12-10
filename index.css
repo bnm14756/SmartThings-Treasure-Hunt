@@ -1,3 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 
+  Tailwind directives are removed because we are using the CDN in index.html.
+  Add custom global styles here if needed.
+*/
