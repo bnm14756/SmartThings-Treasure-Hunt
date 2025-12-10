@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, ErrorInfo, ReactNode } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
 import { VirtualMap } from './components/VirtualMap';
@@ -59,7 +59,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [devices, setDevices] = useState<Device[]>(INITIAL_DEVICES);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  
+  // FIX: Store ID only to prevent stale state. Derive the full object during render.
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const selectedDevice = devices.find(d => d.id === selectedDeviceId) || null;
+
   const [completedMissions, setCompletedMissions] = useState<number[]>([]);
   const [showIntro, setShowIntro] = useState(true);
   const [avatarPos, setAvatarPos] = useState<Position>({ x: 50, y: 50 });
@@ -158,14 +162,14 @@ const AppContent: React.FC = () => {
                 devices={devices} 
                 avatarPosition={avatarPos}
                 onMapClick={handleMapClick}
-                onDeviceClick={setSelectedDevice}
+                onDeviceClick={(device) => setSelectedDeviceId(device.id)}
             />
         )}
         
         {activeTab === 'devices' && (
             <DeviceListTab 
                 devices={devices} 
-                onDeviceClick={setSelectedDevice} 
+                onDeviceClick={(device) => setSelectedDeviceId(device.id)} 
             />
         )}
 
@@ -197,11 +201,11 @@ const AppContent: React.FC = () => {
           <BloomingGuide lines={guideLines} onClick={() => {}} />
       )}
 
-      {/* Device Modal */}
+      {/* Device Modal - Now passes the fresh selectedDevice derived from state */}
       {selectedDevice && (
         <DeviceControlModal
           device={selectedDevice}
-          onClose={() => setSelectedDevice(null)}
+          onClose={() => setSelectedDeviceId(null)}
           onUpdate={handleDeviceUpdate}
         />
       )}
