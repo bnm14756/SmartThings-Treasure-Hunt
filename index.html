@@ -6,47 +6,41 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
-      // 1. Suppress Tailwind CSS warnings
+      // ERROR SUPPRESSION: Prevent "Access to storage is not allowed" from cluttering the console.
       (function() {
-        const originalWarn = console.warn;
-        const originalLog = console.log;
-        
-        // Filter function for Tailwind-specific messages
-        function shouldSuppress(args) {
-          const msg = args.map(String).join(' ');
-          return msg.includes('cdn.tailwindcss.com') || msg.includes('Tailwind CSS');
+        const _error = console.error;
+        const _warn = console.warn;
+        const _log = console.log;
+
+        function isIgnored(args) {
+          try {
+            const msg = args.map(String).join(' ').toLowerCase();
+            return msg.includes('access to storage is not allowed') || 
+                   msg.includes('cdn.tailwindcss.com') ||
+                   msg.includes('tailwind css');
+          } catch(e) { return false; }
         }
 
-        console.warn = function(...args) {
-          if (shouldSuppress(args)) return;
-          originalWarn.apply(console, args);
-        };
+        console.error = function(...args) { if (!isIgnored(args)) _error.apply(console, args); };
+        console.warn = function(...args) { if (!isIgnored(args)) _warn.apply(console, args); };
+        console.log = function(...args) { if (!isIgnored(args)) _log.apply(console, args); };
+
+        window.addEventListener('unhandledrejection', function(e) {
+           const msg = e.reason ? String(e.reason) : '';
+           if (msg.includes('Access to storage is not allowed')) {
+             e.preventDefault();
+             e.stopImmediatePropagation();
+           }
+        });
         
-        console.log = function(...args) {
-          if (shouldSuppress(args)) return;
-          originalLog.apply(console, args);
-        };
+        window.addEventListener('error', function(e) {
+           const msg = e.message ? String(e.message) : '';
+           if (msg.includes('Access to storage is not allowed')) {
+             e.preventDefault();
+             e.stopImmediatePropagation();
+           }
+        });
       })();
-
-      // 2. Suppress "Access to storage is not allowed" errors
-      // These errors are thrown by the browser in restricted iframes and can't always be caught by try-catch blocks in code.
-      window.addEventListener('unhandledrejection', function(event) {
-        if (event.reason && (
-            event.reason.message?.includes('Access to storage is not allowed') ||
-            event.reason.toString().includes('Access to storage is not allowed')
-        )) {
-          // Prevent the error from appearing in the console
-          event.preventDefault(); 
-          return;
-        }
-      });
-      
-      window.addEventListener('error', function(event) {
-         if (event.message?.includes('Access to storage is not allowed')) {
-            event.preventDefault();
-            return;
-         }
-      });
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">

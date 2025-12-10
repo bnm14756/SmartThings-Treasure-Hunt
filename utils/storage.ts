@@ -1,75 +1,71 @@
-// In-memory fallback
-const memoryStorage: Record<string, string> = {};
-let isMemoryMode = false;
+// 1. Define a safe Memory Storage implementation
+class MemoryStorage {
+  private store: Record<string, string> = {};
+
+  getItem(key: string): string | null {
+    return this.store[key] || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.store[key] = value;
+  }
+
+  removeItem(key: string): void {
+    delete this.store[key];
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+}
+
+// 2. Singleton instance
+const memoryStore = new MemoryStorage();
 const STORAGE_KEY = 'st_treasure_hunt_save_v1';
 
-/**
- * Helper to safely get the storage object.
- * Returns null if access is denied, forcing the caller to use memory fallback.
- */
-function getStorageSafe(): Storage | null {
-  if (isMemoryMode) return null;
-  
+// 3. Helper to get the best available storage without throwing errors
+function getStorage(): Storage | MemoryStorage {
   try {
-    // Accessing window.localStorage can throw a SecurityError in strict iframes immediately.
-    // We do NOT check this at module load time anymore. We check only when needed.
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage;
-    }
+    // If window is undefined (SSR) or we are in a sandboxed iframe, this might throw
+    if (typeof window === 'undefined') return memoryStore;
+    
+    // Accessing localStorage property itself can throw SecurityError
+    const storage = window.localStorage;
+    
+    // Test write permission
+    const testKey = '__test_perm__';
+    storage.setItem(testKey, '1');
+    storage.removeItem(testKey);
+
+    return storage;
   } catch (e) {
-    // Access denied
-    isMemoryMode = true;
+    // If ANY error occurs (SecurityError, QuotaExceeded, etc.), fallback to memory
+    return memoryStore;
   }
-  return null;
 }
 
 export const saveGameState = (state: any) => {
-  const json = JSON.stringify(state);
-  const storage = getStorageSafe();
-
-  if (storage) {
-    try {
-      storage.setItem(STORAGE_KEY, json);
-      return;
-    } catch (e) {
-      // Quota exceeded or permission changed
-      isMemoryMode = true;
-    }
+  try {
+    const json = JSON.stringify(state);
+    getStorage().setItem(STORAGE_KEY, json);
+  } catch (e) {
+    console.warn("Save failed silently:", e);
   }
-  
-  // Fallback
-  memoryStorage[STORAGE_KEY] = json;
 };
 
 export const loadGameState = () => {
-  const storage = getStorageSafe();
-  
-  if (storage) {
-    try {
-      const data = storage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
-    } catch (e) {
-      isMemoryMode = true;
-    }
+  try {
+    const data = getStorage().getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    return null;
   }
-
-  // Fallback
-  const data = memoryStorage[STORAGE_KEY];
-  return data ? JSON.parse(data) : null;
 };
 
 export const clearGameState = () => {
-  const storage = getStorageSafe();
-  
-  if (storage) {
-    try {
-      storage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      // Ignore
-    }
+  try {
+    getStorage().removeItem(STORAGE_KEY);
+  } catch (e) {
+    // ignore
   }
-  delete memoryStorage[STORAGE_KEY];
 };
-
-// No export function initializeStorage needed anymore. 
-// We handle it lazily.
