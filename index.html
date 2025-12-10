@@ -7,8 +7,8 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
       // CRITICAL FIX: Storage Polyfill
-      // This immediately patches window.localStorage and window.sessionStorage.
-      // If access is denied (security error), it replaces them with a safe in-memory object.
+      // MUST RUN BEFORE ANY EXTERNAL LIBRARIES (like Tailwind CDN)
+      // This patches window.localStorage to use memory instead of disk if the browser blocks it.
       (function() {
         function createMemoryStorage() {
           return {
@@ -32,10 +32,7 @@
         }
 
         if (storageBlocked) {
-          console.warn('⚠️ Storage access blocked by browser. Activating Memory Storage Polyfill to prevent crashes.');
-          
           try {
-            // Attempt to override the properties
             Object.defineProperty(window, 'localStorage', { 
               value: createMemoryStorage(), 
               configurable: true, 
@@ -48,22 +45,27 @@
               enumerable: true, 
               writable: true 
             });
+            console.log('🔒 Secure Memory Storage Activated');
           } catch(e) {
-            console.error('Failed to polyfill storage:', e);
+            console.error('Storage polyfill failed:', e);
           }
         }
       })();
     </script>
     <script>
-      // Global Error Suppressor for remaining noise
+      // Global Error Suppressor
       window.addEventListener('unhandledrejection', function(e) {
          const msg = e.reason ? String(e.reason) : '';
-         if (msg.includes('Access to storage is not allowed') || msg.includes('QuotaExceededError')) {
+         if (msg.includes('Access to storage') || msg.includes('QuotaExceeded')) {
            e.preventDefault();
          }
       });
     </script>
+    
+    <!-- RESTORED: Tailwind CSS CDN for UI styling -->
+    <!-- The polyfill above will prevent this script from crashing the app -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script type="importmap">
 {
   "imports": {
