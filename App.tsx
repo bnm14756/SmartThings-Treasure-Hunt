@@ -6,6 +6,7 @@ import { DeviceControlModal } from './components/DeviceControlModal';
 import { BloomingGuide } from './components/BloomingGuide';
 import { IntroOverlay } from './components/IntroOverlay';
 import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTabs';
+import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
@@ -42,10 +43,7 @@ const App: React.FC = () => {
         const savedState = loadGameState();
         if (savedState) {
             console.log("Restoring saved game state...");
-            if (savedState.devices) setDevices(savedState.devices);
-            if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
-            if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
-            if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
+            restoreGameState(savedState);
         }
     } catch (e) {
         // Fallback silently
@@ -55,7 +53,14 @@ const App: React.FC = () => {
     setShowIntro(false);
   };
 
-  // Auto-Save Effect
+  const restoreGameState = (savedState: any) => {
+    if (savedState.devices) setDevices(savedState.devices);
+    if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
+    if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
+    if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
+  };
+
+  // Auto-Save Effect (to memory)
   useEffect(() => {
     if (!showIntro) {
         const stateToSave = {
@@ -204,6 +209,11 @@ const App: React.FC = () => {
       setNearbyDevice(null);
   };
 
+  const handleLoadGameCode = (state: any) => {
+      restoreGameState(state);
+      setActiveTab('home');
+  };
+
   const renderContent = () => {
     if (isGameClear) {
         return (
@@ -248,6 +258,14 @@ const App: React.FC = () => {
         return <LifeTab devices={devices} onDeviceToggle={(id, isOn) => handleDeviceUpdate(id, { isOn })} />;
       case 'automation':
         return <AutomationTab routines={ROUTINES} onRunRoutine={runRoutine} />;
+      case 'menu':
+        return (
+            <MenuTab 
+                currentState={{ devices, currentMissionIndex, isGameClear, avatarPosition }}
+                onLoadGame={handleLoadGameCode}
+                onResetGame={resetGame}
+            />
+        );
       default:
         return <div className="p-8 text-center text-gray-500 mt-20">준비 중인 메뉴입니다.</div>;
     }

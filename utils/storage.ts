@@ -1,61 +1,24 @@
-// 1. Define a safe Memory Storage implementation
-class MemoryStorage {
-  private store: Record<string, string> = {};
+// SECURITY FIX: 
+// Browsers in strict iframe environments (like AI Studio previews) block access to localStorage.
+// Attempting to access window.localStorage causes a "SecurityError" or "Access to storage is not allowed".
+// To ensure the app runs 100% of the time without crashing, we force the use of In-Memory storage only.
+// Note: Progress will reset when the page is reloaded, but the app will not crash.
 
-  getItem(key: string): string | null {
-    return this.store[key] || null;
-  }
-
-  setItem(key: string, value: string): void {
-    this.store[key] = value;
-  }
-
-  removeItem(key: string): void {
-    delete this.store[key];
-  }
-
-  clear(): void {
-    this.store = {};
-  }
-}
-
-// 2. Singleton instance
-const memoryStore = new MemoryStorage();
+const memoryStore: Record<string, string> = {};
 const STORAGE_KEY = 'st_treasure_hunt_save_v1';
-
-// 3. Helper to get the best available storage without throwing errors
-function getStorage(): Storage | MemoryStorage {
-  try {
-    // If window is undefined (SSR) or we are in a sandboxed iframe, this might throw
-    if (typeof window === 'undefined') return memoryStore;
-    
-    // Accessing localStorage property itself can throw SecurityError
-    const storage = window.localStorage;
-    
-    // Test write permission
-    const testKey = '__test_perm__';
-    storage.setItem(testKey, '1');
-    storage.removeItem(testKey);
-
-    return storage;
-  } catch (e) {
-    // If ANY error occurs (SecurityError, QuotaExceeded, etc.), fallback to memory
-    return memoryStore;
-  }
-}
 
 export const saveGameState = (state: any) => {
   try {
     const json = JSON.stringify(state);
-    getStorage().setItem(STORAGE_KEY, json);
+    memoryStore[STORAGE_KEY] = json;
   } catch (e) {
-    console.warn("Save failed silently:", e);
+    // Ignore errors
   }
 };
 
 export const loadGameState = () => {
   try {
-    const data = getStorage().getItem(STORAGE_KEY);
+    const data = memoryStore[STORAGE_KEY];
     return data ? JSON.parse(data) : null;
   } catch (e) {
     return null;
@@ -64,8 +27,31 @@ export const loadGameState = () => {
 
 export const clearGameState = () => {
   try {
-    getStorage().removeItem(STORAGE_KEY);
+    delete memoryStore[STORAGE_KEY];
   } catch (e) {
-    // ignore
+    // Ignore errors
+  }
+};
+
+// --- Manual Save Code System ---
+export const generateSaveCode = (state: any): string => {
+  try {
+    const json = JSON.stringify(state);
+    // Encode to Base64 (handling UTF-8 strings properly)
+    return btoa(unescape(encodeURIComponent(json)));
+  } catch (e) {
+    console.error("Failed to generate save code", e);
+    return "";
+  }
+};
+
+export const parseSaveCode = (code: string): any | null => {
+  try {
+    // Decode from Base64
+    const json = decodeURIComponent(escape(atob(code)));
+    return JSON.parse(json);
+  } catch (e) {
+    console.error("Failed to parse save code", e);
+    return null;
   }
 };
