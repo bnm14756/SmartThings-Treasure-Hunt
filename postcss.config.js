@@ -1,6 +1,6 @@
 export default {
   plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
+    // TailwindCSS dependency removed to fix build error.
+    // Styles are handled via index.css manually.
   },
 };
