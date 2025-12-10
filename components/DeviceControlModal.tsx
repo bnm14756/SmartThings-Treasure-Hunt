@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Device } from '../types';
-import { X, Power, ChevronUp, ChevronDown, CheckCircle2, Loader2, Smartphone, Wifi } from 'lucide-react';
+import { X, Power, ChevronUp, ChevronDown, CheckCircle2, Loader2, Smartphone, Wifi, Plus } from 'lucide-react';
 
 interface DeviceControlModalProps {
   device: Device;
@@ -9,16 +9,16 @@ interface DeviceControlModalProps {
 }
 
 export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, onClose, onUpdate }) => {
-  const [connectionStep, setConnectionStep] = useState<'connecting' | 'connected' | 'control'>('control');
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
-  useEffect(() => {
-    if (!device.isConnected) {
-        setConnectionStep('connecting');
-        setTimeout(() => { setConnectionStep('connected'); onUpdate(device.id, { isConnected: true }); }, 1500);
-        setTimeout(() => { setConnectionStep('control'); }, 2500);
-    }
-  }, [device.id]);
+  const handleConnect = () => {
+      setIsConnecting(true);
+      setTimeout(() => {
+          onUpdate(device.id, { isConnected: true });
+          setIsConnecting(false);
+      }, 1500);
+  };
 
   const handlePowerClick = () => {
     setIsToggling(true);
@@ -34,24 +34,44 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
     if (typeof device.value === 'number') onUpdate(device.id, { value: device.value + delta });
   };
 
-  if (connectionStep === 'connecting' || connectionStep === 'connected') {
+  // State 1: Not Connected -> Show "Add Device" UI
+  if (!device.isConnected) {
       return (
         <div className="modal-overlay">
             <div className="modal-content text-center p-4">
-                <div style={{ padding: 40 }}>
-                    {connectionStep === 'connecting' ? (
-                        <Wifi size={48} className="text-primary animate-bounce" />
-                    ) : (
-                        <CheckCircle2 size={48} className="text-success" />
-                    )}
-                    <h2 className="section-title mt-4">{connectionStep === 'connecting' ? '연결 중...' : '연결 완료!'}</h2>
-                    <p style={{ color: '#8e8e93' }}>SmartThings Cloud 통신 중</p>
-                </div>
+                 <div style={{ padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 80, height: 80, background: '#f2f2f7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Smartphone size={40} color="#8e8e93" />
+                    </div>
+                    <h2 className="section-title" style={{ marginBottom: 4 }}>새로운 기기 발견</h2>
+                    <p style={{ color: '#8e8e93', fontSize: 14 }}>{device.name}이(가) 근처에 있습니다.<br/>SmartThings에 추가하시겠습니까?</p>
+                    
+                    <button 
+                        onClick={handleConnect}
+                        disabled={isConnecting}
+                        className="btn btn-primary w-full mt-4"
+                        style={{ justifyContent: 'center' }}
+                    >
+                        {isConnecting ? (
+                            <>
+                                <Loader2 className="animate-spin" size={20} /> 연결 중...
+                            </>
+                        ) : (
+                            <>
+                                <Plus size={20} /> 기기 추가하기
+                            </>
+                        )}
+                    </button>
+                    <button onClick={onClose} className="btn btn-secondary w-full" style={{ border: 'none' }}>
+                        나중에 하기
+                    </button>
+                 </div>
             </div>
         </div>
       );
   }
 
+  // State 2: Connected -> Control UI
   // Define clear styles for ON/OFF states
   const headerBg = device.isOn ? '#007aff' : '#1c1c1e'; // Darker gray for OFF
   const buttonBg = device.isOn ? 'white' : '#3a3a3c';
@@ -65,7 +85,7 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
             <div className="flex justify-between items-start">
                 <div>
                     <div className="flex items-center gap-2 mb-2" style={{ opacity: 0.8, fontSize: 10, textTransform: 'uppercase' }}>
-                        <Smartphone size={12} /> SmartThings Control
+                        <Wifi size={12} /> SmartThings Connected
                     </div>
                     <h2 style={{ fontSize: 24, fontWeight: 'bold' }}>{device.name}</h2>
                     <p style={{ opacity: 0.8, fontSize: 12 }}>{device.room} • {device.isOn ? '작동 중' : '대기 중'}</p>

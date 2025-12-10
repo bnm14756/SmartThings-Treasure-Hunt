@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Device, Routine } from '../types';
-import { Play, AlertTriangle, Leaf } from 'lucide-react';
+import { Play, AlertTriangle, Leaf, Moon, Clapperboard, DoorOpen } from 'lucide-react';
 
 export const LifeTab: React.FC<{ devices: Device[]; onDeviceToggle: (id: string, isOn: boolean) => void }> = ({ devices, onDeviceToggle }) => {
   const energyData = devices.map(d => ({ name: d.name, value: d.isOn ? d.powerConsumption : 0, original: d })).filter(item => item.value > 0 || item.original.isConnected);
@@ -78,14 +77,42 @@ export const LifeTab: React.FC<{ devices: Device[]; onDeviceToggle: (id: string,
 };
 
 export const AutomationTab: React.FC<{ routines: Routine[]; onRunRoutine: (id: string) => void }> = ({ routines, onRunRoutine }) => {
+  const getIcon = (icon: string) => {
+    switch(icon) {
+        case 'leaf': return <Leaf size={24} />;
+        case 'door-open': return <DoorOpen size={24} />;
+        case 'moon': return <Moon size={24} />;
+        case 'clapperboard': return <Clapperboard size={24} />;
+        default: return <Play size={24} />;
+    }
+  };
+
+  const getIconBg = (icon: string) => {
+      switch(icon) {
+          case 'moon': return '#e0e7ff'; // Indigo tint
+          case 'clapperboard': return '#fce7f3'; // Pink tint
+          default: return '#e3f2fd'; // Blue tint
+      }
+  };
+
   return (
     <div className="page-container">
       <h2 className="section-title">루틴 추천</h2>
       {routines.map(routine => (
         <div key={routine.id} className="card flex items-center justify-between">
             <div className="flex items-center gap-4">
-                <div style={{ fontSize: 24, background: '#e3f2fd', width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {routine.icon === 'leaf' ? '🍃' : '🚪'}
+                <div style={{ 
+                    fontSize: 24, 
+                    background: getIconBg(routine.icon), 
+                    color: '#333',
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 12, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                }}>
+                    {getIcon(routine.icon)}
                 </div>
                 <div>
                     <h3 style={{ fontWeight: 'bold' }}>{routine.name}</h3>
@@ -111,6 +138,7 @@ export const DeviceListTab: React.FC<{ devices: Device[]; onDeviceClick: (d: Dev
                     </div>
                     <div style={{ fontWeight: 'bold', fontSize: 14 }}>{device.name}</div>
                     <div style={{ fontSize: 12, color: '#8e8e93' }}>{device.room}</div>
+                    {!device.isConnected && <div style={{ fontSize: 10, color: '#ef4444', marginTop: 4 }}>연결 필요</div>}
                 </button>
             ))}
         </div>

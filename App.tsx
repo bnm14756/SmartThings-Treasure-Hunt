@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ErrorInfo, ReactNode } from 'react';
+import React, { Component, useState, useEffect, ErrorInfo, ReactNode } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
 import { VirtualMap } from './components/VirtualMap';
@@ -20,11 +20,8 @@ interface ErrorBoundaryState {
 }
 
 // Error Boundary: React 렌더링 중 발생하는 오류를 잡아 흰 화면을 방지합니다.
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState {
     return { hasError: true };
@@ -125,9 +122,22 @@ const AppContent: React.FC = () => {
     setAvatarPos({ x, y });
   };
 
+  const handleDeviceClick = (device: Device) => {
+    // Proximity Check
+    const distance = Math.sqrt(Math.pow(device.x - avatarPos.x, 2) + Math.pow(device.y - avatarPos.y, 2));
+    const PROXIMITY_THRESHOLD = 15; // Distance in %
+
+    if (distance > PROXIMITY_THRESHOLD) {
+      alert("⚠️ 기기가 너무 멀리 있습니다!\n\n아바타를 기기 근처로 이동시킨 후 다시 시도해주세요.");
+      return;
+    }
+
+    setSelectedDeviceId(device.id);
+  };
+
   const handleRunRoutine = (routineId: string) => {
       if (routineId === 'routine-1') {
-          // Eco Mode: Turn off everything not critical (simulated)
+          // Eco Mode: Turn off everything not critical
           const count = devices.filter(d => d.isOn).length;
           setDevices(prev => prev.map(d => ({ ...d, isOn: false, status: 'Off' })));
           alert(`절전 모드 실행 완료!\n${count}개의 기기가 꺼졌습니다.`);
@@ -139,6 +149,22 @@ const AppContent: React.FC = () => {
               return d;
           }));
           alert('외출 모드 실행 완료!');
+      } else if (routineId === 'routine-3') {
+          // Good Night Mode
+          setDevices(prev => prev.map(d => {
+            if (d.type === 'light' || d.type === 'tv') return { ...d, isOn: false };
+            if (d.type === 'ac') return { ...d, status: 'Quiet', value: 24, isOn: true };
+            return d;
+          }));
+          alert('취침 모드 실행 완료!\n좋은 꿈 꾸세요. 🌙');
+      } else if (routineId === 'routine-4') {
+          // Movie Mode
+          setDevices(prev => prev.map(d => {
+            if (d.type === 'tv') return { ...d, isOn: true, status: 'Cinema' };
+            if (d.type === 'light') return { ...d, isOn: true, value: 20 }; // Dim light
+            return d;
+          }));
+          alert('영화 모드 실행 완료! 🍿');
       }
   };
 
@@ -162,7 +188,7 @@ const AppContent: React.FC = () => {
                 devices={devices} 
                 avatarPosition={avatarPos}
                 onMapClick={handleMapClick}
-                onDeviceClick={(device) => setSelectedDeviceId(device.id)}
+                onDeviceClick={handleDeviceClick}
             />
         )}
         
