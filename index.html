@@ -8,55 +8,74 @@
     
     <script>
       (function() {
-        // Storage Access Error Fix
-        // This script aggressively mocks localStorage and sessionStorage to prevent 
-        // "Access to storage is not allowed" errors in sandboxed iframes or private modes.
-        try {
-          var memStorage = {};
-          var storageShim = {
-            _data: memStorage,
-            getItem: function(key) { return memStorage[key] || null; },
-            setItem: function(key, value) { memStorage[key] = String(value); },
-            removeItem: function(key) { delete memStorage[key]; },
-            clear: function() { memStorage = {}; },
-            key: function(index) { return Object.keys(memStorage)[index] || null; },
-            get length() { return Object.keys(memStorage).length; }
-          };
-
-          // Attempt to override the global storage properties
-          // Using Object.defineProperty to bypass read-only restrictions if possible
-          try {
-            Object.defineProperty(window, 'localStorage', { value: storageShim, writable: true, configurable: true });
-            Object.defineProperty(window, 'sessionStorage', { value: storageShim, writable: true, configurable: true });
-          } catch(err) {
-            // If defineProperty fails, try direct assignment (might fail in strict mode but worth a shot)
-            try { window.localStorage = storageShim; } catch(e) {}
-            try { window.sessionStorage = storageShim; } catch(e) {}
-          }
-        } catch (e) {
-          console.warn("Storage shim failed:", e);
+        // --- Error Suppression System ---
+        function shouldSuppress(msg) {
+          if (!msg) return false;
+          // Suppress storage, security, and quota errors common in restricted iframes
+          return /Access to storage|SecurityError|localStorage|sessionStorage|quota|denied|The operation is insecure/i.test(msg);
         }
 
-        // Fallback: Aggressive Error Suppression
-        // If the shim didn't work and the browser still throws errors, we catch and suppress them.
-        function suppressError(e) {
-          var msg = '';
-          if (e && e.reason) {
-             msg = typeof e.reason === 'object' ? (e.reason.message || '') : String(e.reason);
-          } else if (e && e.message) {
-             msg = e.message;
-          }
+        // Handle synchronous errors
+        window.addEventListener('error', function(e) {
+          var msg = e.message || '';
+          if (e.error && e.error.message) msg = e.error.message;
           
-          if (/Access to storage|SecurityError|localStorage|sessionStorage|quota|denied/i.test(msg)) {
+          if (shouldSuppress(msg)) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            console.warn('Storage/Security error suppressed to keep app running.');
+            console.warn('Suppressed storage error:', msg);
             return true;
           }
+        }, true);
+
+        // Handle async promise rejections (where "Uncaught (in promise)" comes from)
+        window.addEventListener('unhandledrejection', function(e) {
+          var msg = '';
+          if (e.reason) {
+            msg = typeof e.reason === 'object' ? (e.reason.message || String(e.reason)) : String(e.reason);
+          }
+          if (shouldSuppress(msg)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            console.warn('Suppressed storage promise rejection:', msg);
+          }
+        }, true);
+
+        // --- Storage Mocking System ---
+        try {
+          var mockStorage = {
+            _data: {},
+            getItem: function(key) { return this._data[key] || null; },
+            setItem: function(key, value) { this._data[key] = String(value); },
+            removeItem: function(key) { delete this._data[key]; },
+            clear: function() { this._data = {}; },
+            key: function(index) { return Object.keys(this._data)[index] || null; },
+            get length() { return Object.keys(this._data).length; }
+          };
+
+          // Try to patch the window object
+          var patch = function(prop) {
+            try {
+              // Try deleting to handle non-configurable properties on the instance
+              delete window[prop];
+              
+              Object.defineProperty(window, prop, {
+                value: mockStorage,
+                configurable: true,
+                writable: true
+              });
+            } catch(e) {
+              // Fallback: try direct assignment
+              try { window[prop] = mockStorage; } catch(z) {}
+            }
+          };
+
+          patch('localStorage');
+          patch('sessionStorage');
+
+        } catch(e) {
+          console.warn('Storage patching failed completely:', e);
         }
-        
-        window.addEventListener('error', suppressError, true);
-        window.addEventListener('unhandledrejection', suppressError, true);
       })();
     </script>
     
