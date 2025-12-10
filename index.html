@@ -6,10 +6,11 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
-      // CRITICAL FIX: Storage Polyfill
-      // MUST RUN BEFORE ANY EXTERNAL LIBRARIES (like Tailwind CDN)
-      // This patches window.localStorage to use memory instead of disk if the browser blocks it.
+      // CRITICAL FIX: Robust Storage Polyfill & Error Suppressor
+      // This script forces the app to continue running even if the browser blocks storage access.
+      
       (function() {
+        // 1. Define a safe in-memory storage implementation
         function createMemoryStorage() {
           return {
             _data: {},
@@ -22,6 +23,31 @@
           };
         }
 
+        // 2. Global Error Handler (Aggressive)
+        // This catches errors from external scripts (like Tailwind CDN) that we can't control.
+        window.onerror = function(msg, url, line, col, error) {
+          const strMsg = String(msg).toLowerCase();
+          if (strMsg.includes('access to storage') || 
+              strMsg.includes('quotaexceeded') || 
+              strMsg.includes('securityerror')) {
+            console.warn('⚠️ Suppressed blocking storage error:', msg);
+            return true; // Prevents the error from showing in console as red text
+          }
+          return false;
+        };
+
+        // 3. Promise Rejection Handler
+        window.addEventListener('unhandledrejection', function(e) {
+           const msg = e.reason ? String(e.reason).toLowerCase() : '';
+           if (msg.includes('access to storage') || 
+               msg.includes('quotaexceeded') || 
+               msg.includes('securityerror')) {
+             e.preventDefault(); // Prevents the error from crashing the app
+             console.warn('⚠️ Suppressed blocking storage promise rejection');
+           }
+        });
+
+        // 4. Apply Polyfill
         var storageBlocked = false;
         try {
           var x = '__test__';
@@ -32,7 +58,12 @@
         }
 
         if (storageBlocked) {
+          console.log('🔒 Storage blocked. Attempting to inject memory storage...');
           try {
+            // Try to delete the read-only property first (works in some environments)
+            try { delete window.localStorage; } catch(e) {}
+            try { delete window.sessionStorage; } catch(e) {}
+
             Object.defineProperty(window, 'localStorage', { 
               value: createMemoryStorage(), 
               configurable: true, 
@@ -45,21 +76,12 @@
               enumerable: true, 
               writable: true 
             });
-            console.log('🔒 Secure Memory Storage Activated');
+            console.log('✅ Memory Storage Polyfill injected successfully.');
           } catch(e) {
-            console.error('Storage polyfill failed:', e);
+            console.error('❌ Failed to inject storage polyfill. App may be unstable.', e);
           }
         }
       })();
-    </script>
-    <script>
-      // Global Error Suppressor
-      window.addEventListener('unhandledrejection', function(e) {
-         const msg = e.reason ? String(e.reason) : '';
-         if (msg.includes('Access to storage') || msg.includes('QuotaExceeded')) {
-           e.preventDefault();
-         }
-      });
     </script>
     
     <!-- RESTORED: Tailwind CSS CDN for UI styling -->
