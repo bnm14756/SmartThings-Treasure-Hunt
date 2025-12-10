@@ -6,7 +6,52 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     
-    <!-- Storage shim removed. The app will run in-memory only. -->
+    <script>
+      (function() {
+        // Aggressive Error Suppression for Storage/Security issues
+        function isStorageError(e) {
+          var msg = '';
+          if (e.reason) {
+            msg = typeof e.reason === 'object' ? (e.reason.message || '') : String(e.reason);
+          } else if (e.message) {
+            msg = e.message;
+          }
+          // Catch common storage denial messages
+          return /Access to storage|SecurityError|localStorage|sessionStorage|quota|denied/i.test(msg);
+        }
+
+        function suppress(e) {
+          if (isStorageError(e)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            console.warn('Storage/Security error suppressed:', e.message || e.reason);
+            return true;
+          }
+        }
+        
+        window.addEventListener('error', suppress, true);
+        window.addEventListener('unhandledrejection', suppress, true);
+
+        // Mock Storage to prevent libraries from crashing when they try to access window.localStorage
+        var mockStore = {
+          _data: {},
+          getItem: function(k) { return this._data[k] || null; },
+          setItem: function(k, v) { this._data[k] = String(v); },
+          removeItem: function(k) { delete this._data[k]; },
+          clear: function() { this._data = {}; },
+          key: function(i) { return Object.keys(this._data)[i] || null; },
+          get length() { return Object.keys(this._data).length; }
+        };
+
+        try {
+          // Attempt to overwrite if possible, but don't crash if definedProperty is blocked
+          Object.defineProperty(window, 'localStorage', { value: mockStore, configurable: true, writable: true });
+          Object.defineProperty(window, 'sessionStorage', { value: mockStore, configurable: true, writable: true });
+        } catch(e) {
+          // If we can't shim it, the error listener above is our last line of defense.
+        }
+      })();
+    </script>
     
     <script type="importmap">
 {
