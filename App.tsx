@@ -10,8 +10,8 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
-import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
-import { saveGameState, loadGameState, clearGameState, requestStorageAccess } from './utils/storage';
+import { Trophy, Link, Zap } from 'lucide-react';
+import { clearGameState } from './utils/storage'; // Only keeping clear for explicit reset if needed
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -35,57 +35,10 @@ const App: React.FC = () => {
   const totalPower = devices.reduce((acc, d) => acc + (d.isOn ? d.powerConsumption : 0), 0);
   const SAFE_POWER_THRESHOLD = 300;
 
-  // --- Storage & Initialization Logic ---
-  
   // Handle Intro Completion
   const handleIntroComplete = () => {
-    // SECURITY FIX: Request Storage Access on User Gesture
-    requestStorageAccess().then((granted) => {
-        if (granted) {
-            // If access granted, try to reload state from persistent storage
-            const savedState = loadGameState();
-            if (savedState) {
-                console.log("Storage access granted. Restoring state...");
-                restoreGameState(savedState);
-            }
-        }
-    });
-
-    try {
-        // Try to load state (Lazy load, safe from errors)
-        const savedState = loadGameState();
-        if (savedState) {
-            console.log("Restoring saved game state...");
-            restoreGameState(savedState);
-        }
-    } catch (e) {
-        // Fallback silently
-        console.log("Starting fresh session.");
-    }
-
     setShowIntro(false);
   };
-
-  const restoreGameState = (savedState: any) => {
-    if (savedState.devices) setDevices(savedState.devices);
-    if (savedState.currentMissionIndex !== undefined) setCurrentMissionIndex(savedState.currentMissionIndex);
-    if (savedState.isGameClear !== undefined) setIsGameClear(savedState.isGameClear);
-    if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
-  };
-
-  // Auto-Save Effect
-  useEffect(() => {
-    if (!showIntro) {
-        const stateToSave = {
-            devices,
-            currentMissionIndex,
-            isGameClear,
-            avatarPosition
-        };
-        saveGameState(stateToSave);
-    }
-  }, [devices, currentMissionIndex, isGameClear, showIntro, avatarPosition]);
-
 
   // --- Game Logic ---
 
@@ -210,7 +163,6 @@ const App: React.FC = () => {
   };
 
   const resetGame = () => {
-      clearGameState(); // Clear storage
       setDevices(INITIAL_DEVICES.map(d => ({...d})));
       setCurrentMissionIndex(0);
       setActiveTab('home');
@@ -218,13 +170,8 @@ const App: React.FC = () => {
       setIsGameClear(false);
       setShowSuccessModal(false);
       setSelectedDevice(null);
-      setShowIntro(true); // Will trigger intro again, but storage is cleared so no load
+      setShowIntro(true); 
       setNearbyDevice(null);
-  };
-
-  const handleLoadGameCode = (state: any) => {
-      restoreGameState(state);
-      setActiveTab('home');
   };
 
   const renderContent = () => {
@@ -274,8 +221,8 @@ const App: React.FC = () => {
       case 'menu':
         return (
             <MenuTab 
-                currentState={{ devices, currentMissionIndex, isGameClear, avatarPosition }}
-                onLoadGame={handleLoadGameCode}
+                currentState={null}
+                onLoadGame={() => {}}
                 onResetGame={resetGame}
             />
         );

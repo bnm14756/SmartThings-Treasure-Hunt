@@ -6,72 +6,19 @@
     <title>SmartThings 가상 홈 보물찾기</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
     <script>
-      // --- SYSTEM STABILIZER START ---
+      // Console Filter to suppress "Tailwind CDN should not be used in production" warning
       (function() {
-        // 1. Console Noise Filter
         const originalWarn = console.warn;
         console.warn = function(...args) {
-          // Suppress Tailwind warning
           if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) {
             return;
           }
           originalWarn.apply(console, args);
         };
-
-        // 2. Global Error Handler (Aggressive)
-        // Suppresses "Access to storage is not allowed" errors to prevent the app from appearing broken.
-        window.onerror = function(msg, url, line, col, error) {
-          const strMsg = String(msg).toLowerCase();
-          if (strMsg.includes('access to storage') || 
-              strMsg.includes('quotaexceeded') || 
-              strMsg.includes('securityerror')) {
-            return true; // Return true to prevent the error from firing in the console
-          }
-          return false;
-        };
-
-        window.addEventListener('unhandledrejection', function(e) {
-           const msg = e.reason ? String(e.reason).toLowerCase() : '';
-           // Handle specific "Uncaught (in promise) Error: Access to storage..."
-           if (msg.includes('access to storage') || 
-               msg.includes('quotaexceeded') || 
-               msg.includes('securityerror')) {
-             e.preventDefault(); // Prevent crash
-             e.stopPropagation();
-           }
-        });
-
-        // 3. Storage Polyfill
-        function createMemoryStorage() {
-          return {
-            _data: {},
-            getItem: function(key) { return this._data[key] || null; },
-            setItem: function(key, value) { this._data[key] = String(value); },
-            removeItem: function(key) { delete this._data[key]; },
-            clear: function() { this._data = {}; },
-            key: function(i) { return Object.keys(this._data)[i] || null; },
-            get length() { return Object.keys(this._data).length; }
-          };
-        }
-
-        try {
-          window.localStorage.setItem('__test__', 'ok');
-          window.localStorage.removeItem('__test__');
-        } catch (e) {
-          try {
-            Object.defineProperty(window, 'localStorage', { 
-              value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
-            });
-            Object.defineProperty(window, 'sessionStorage', { 
-              value: createMemoryStorage(), configurable: true, enumerable: true, writable: true 
-            });
-          } catch(err) {}
-        }
       })();
-      // --- SYSTEM STABILIZER END ---
     </script>
     
-    <!-- Tailwind CDN: Required for styling in this preview environment -->
+    <!-- Tailwind CSS is strictly required for the UI design. -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script type="importmap">
