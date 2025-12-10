@@ -9,7 +9,7 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
 import { Trophy, Link, Zap, SaveOff } from 'lucide-react';
-import { initializeStorage, saveGameState, loadGameState, clearGameState } from './utils/storage';
+import { saveGameState, loadGameState, clearGameState } from './utils/storage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -19,7 +19,6 @@ const App: React.FC = () => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-  const [storageEnabled, setStorageEnabled] = useState(true);
   
   // Game State
   const [isGameClear, setIsGameClear] = useState(false);
@@ -39,11 +38,7 @@ const App: React.FC = () => {
   // Handle Intro Completion
   const handleIntroComplete = () => {
     try {
-        // Initialize storage (Sync check)
-        const hasAccess = initializeStorage();
-        setStorageEnabled(hasAccess);
-
-        // Try to load state
+        // Try to load state (Lazy load, safe from errors)
         const savedState = loadGameState();
         if (savedState) {
             console.log("Restoring saved game state...");
@@ -53,8 +48,8 @@ const App: React.FC = () => {
             if (savedState.avatarPosition) setAvatarPosition(savedState.avatarPosition);
         }
     } catch (e) {
-        console.error("Error during storage initialization:", e);
-        setStorageEnabled(false);
+        // Fallback silently
+        console.log("Starting fresh session.");
     }
 
     setShowIntro(false);
@@ -265,14 +260,6 @@ const App: React.FC = () => {
       {/* Intro Overlay */}
       {showIntro && (
           <IntroOverlay onComplete={handleIntroComplete} />
-      )}
-      
-      {/* Storage Warning Indicator (Only if memory fallback is active) */}
-      {!storageEnabled && !showIntro && (
-          <div className="fixed top-16 left-4 z-40 bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
-              <SaveOff size={10} />
-              <span>임시 저장 모드</span>
-          </div>
       )}
       
       {/* Main Content Area */}

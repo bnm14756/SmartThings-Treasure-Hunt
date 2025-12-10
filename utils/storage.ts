@@ -1,86 +1,75 @@
-// Module-level in-memory fallback
+// In-memory fallback
 const memoryStorage: Record<string, string> = {};
-let useMemoryOnly = false;
+let isMemoryMode = false;
 const STORAGE_KEY = 'st_treasure_hunt_save_v1';
 
 /**
- * Safely checks if localStorage is available.
- * In some sandboxed environments, just accessing window.localStorage throws a SecurityError.
- * We catch everything here to prevent "Uncaught Error" and default to memory.
+ * Helper to safely get the storage object.
+ * Returns null if access is denied, forcing the caller to use memory fallback.
  */
-function checkStorageAvailability(): boolean {
+function getStorageSafe(): Storage | null {
+  if (isMemoryMode) return null;
+  
   try {
-    if (typeof window === 'undefined') return false;
-    
-    // Accessing the property itself can throw
-    const storage = window.localStorage;
-    if (!storage) return false;
-
-    const testKey = '__storage_test__';
-    storage.setItem(testKey, testKey);
-    storage.removeItem(testKey);
-    return true;
+    // Accessing window.localStorage can throw a SecurityError in strict iframes immediately.
+    // We do NOT check this at module load time anymore. We check only when needed.
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
   } catch (e) {
-    // If we are here, strict privacy settings or iframe restrictions are active.
-    // Return false to use in-memory fallback.
-    return false;
+    // Access denied
+    isMemoryMode = true;
   }
-}
-
-// Initialize immediately (Synchronous)
-const isAvailable = checkStorageAvailability();
-useMemoryOnly = !isAvailable;
-
-if (useMemoryOnly) {
-  console.warn("Storage restricted. Using in-memory storage.");
-}
-
-/**
- * Synchronous initialization helper. 
- * Returns true if persistent storage is active.
- */
-export function initializeStorage(): boolean {
-  return !useMemoryOnly;
+  return null;
 }
 
 export const saveGameState = (state: any) => {
   const json = JSON.stringify(state);
+  const storage = getStorageSafe();
 
-  if (!useMemoryOnly) {
+  if (storage) {
     try {
-      window.localStorage.setItem(STORAGE_KEY, json);
+      storage.setItem(STORAGE_KEY, json);
       return;
     } catch (e) {
-      console.warn("Save failed, switching to memory:", e);
-      useMemoryOnly = true;
+      // Quota exceeded or permission changed
+      isMemoryMode = true;
     }
   }
-
+  
+  // Fallback
   memoryStorage[STORAGE_KEY] = json;
 };
 
 export const loadGameState = () => {
-  if (!useMemoryOnly) {
+  const storage = getStorageSafe();
+  
+  if (storage) {
     try {
-      const data = window.localStorage.getItem(STORAGE_KEY);
+      const data = storage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : null;
     } catch (e) {
-      console.warn("Load failed, switching to memory:", e);
-      useMemoryOnly = true;
+      isMemoryMode = true;
     }
   }
 
+  // Fallback
   const data = memoryStorage[STORAGE_KEY];
   return data ? JSON.parse(data) : null;
 };
 
 export const clearGameState = () => {
-  if (!useMemoryOnly) {
+  const storage = getStorageSafe();
+  
+  if (storage) {
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      storage.removeItem(STORAGE_KEY);
     } catch (e) {
       // Ignore
     }
   }
   delete memoryStorage[STORAGE_KEY];
 };
+
+// No export function initializeStorage needed anymore. 
+// We handle it lazily.
