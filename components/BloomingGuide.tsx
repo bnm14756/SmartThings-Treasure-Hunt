@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flower, ChevronRight } from 'lucide-react';
+import { Flower, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface BloomingGuideProps {
   lines: string[];
@@ -15,13 +15,20 @@ export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines }) => {
       setIsVisible(true);
   }, [lines]);
 
-  const handleBubbleClick = (e: React.MouseEvent) => {
+  const handleNextClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (page < lines.length - 1) {
         setPage(prev => prev + 1);
     } else {
         // Close when finished reading
         setIsVisible(false);
+    }
+  };
+
+  const handlePrevClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (page > 0) {
+        setPage(prev => prev - 1);
     }
   };
 
@@ -43,20 +50,38 @@ export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines }) => {
                 position: 'relative', 
                 cursor: 'pointer' 
             }}
-            onClick={handleBubbleClick}
+            onClick={handleNextClick}
           >
              <p style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{lines[page]}</p>
              <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid #f2f2f7' }}>
                 <span style={{ fontSize: 10, color: '#8e8e93' }}>{page + 1} / {lines.length}</span>
-                {page < lines.length - 1 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff' }}>
-                         <ChevronRight size={14} />
+                
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    {/* Previous Button */}
+                    <div 
+                        onClick={handlePrevClick}
+                        style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            color: page > 0 ? '#007aff' : '#d1d1d6',
+                            cursor: page > 0 ? 'pointer' : 'default',
+                            padding: 4
+                        }}
+                    >
+                         <ChevronLeft size={16} />
                     </div>
-                ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff', fontWeight: 'bold' }}>
-                        확인
-                    </div>
-                )}
+
+                    {/* Next Indicator / Button */}
+                    {page < lines.length - 1 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff', padding: 4 }}>
+                             <ChevronRight size={16} />
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff', fontWeight: 'bold', padding: 4 }}>
+                            확인
+                        </div>
+                    )}
+                </div>
              </div>
           </div>
       )}
