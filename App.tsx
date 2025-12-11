@@ -9,7 +9,7 @@ import { LifeTab, AutomationTab, DeviceListTab } from './components/DashboardTab
 import { MenuTab } from './components/MenuTab';
 import { INITIAL_DEVICES, MISSIONS, ROUTINES } from './constants';
 import { Device, TabType, Position } from './types';
-import { Trophy, Medal } from 'lucide-react';
+import { Trophy, Medal, Hand } from 'lucide-react';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -66,6 +66,7 @@ const AppContent: React.FC = () => {
 
   const [completedMissions, setCompletedMissions] = useState<number[]>([]);
   const [showIntro, setShowIntro] = useState(true);
+  const [showMoveGuide, setShowMoveGuide] = useState(false); // New State for Move Tutorial
   const [avatarPos, setAvatarPos] = useState<Position>({ x: 50, y: 50 });
   const [guideLines, setGuideLines] = useState<string[]>([]);
   
@@ -77,6 +78,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (showIntro) return;
 
+    // Show move guide only once right after intro finishes
+    if (!showIntro && activeTab === 'home' && !sessionStorage.getItem('hasSeenMoveGuide')) {
+        setShowMoveGuide(true);
+        sessionStorage.setItem('hasSeenMoveGuide', 'true');
+    }
+
     if (currentMission) {
         setGuideLines(currentMission.guideText);
     } else if (isGameClear) {
@@ -86,7 +93,7 @@ const AppContent: React.FC = () => {
             '이제 SmartThings랑 함께라면 전기 요금 걱정 없겠어!'
         ]);
     }
-  }, [currentMissionId, showIntro, isGameClear]);
+  }, [currentMissionId, showIntro, isGameClear, activeTab]);
 
   // Check Mission Success Conditions
   useEffect(() => {
@@ -124,6 +131,7 @@ const AppContent: React.FC = () => {
 
   const handleMapClick = (x: number, y: number) => {
     setAvatarPos({ x, y });
+    if (showMoveGuide) setShowMoveGuide(false); // Dismiss guide on first move
   };
 
   const handleDeviceClick = (device: Device) => {
@@ -176,6 +184,7 @@ const AppContent: React.FC = () => {
       setDevices(INITIAL_DEVICES);
       setCompletedMissions([]);
       setShowIntro(true);
+      sessionStorage.removeItem('hasSeenMoveGuide'); // Reset guide status
       setActiveTab('home');
       setAvatarPos({ x: 50, y: 50 });
   };
@@ -238,6 +247,23 @@ const AppContent: React.FC = () => {
           onClose={() => setSelectedDeviceId(null)}
           onUpdate={handleDeviceUpdate}
         />
+      )}
+
+      {/* Move Tutorial Overlay */}
+      {showMoveGuide && activeTab === 'home' && !showIntro && (
+          <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.4)', zIndex: 60 }} onClick={() => setShowMoveGuide(false)}>
+              <div className="animate-bounce" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'white' }}>
+                   <div style={{ background: 'rgba(255,255,255,0.95)', padding: '16px 24px', borderRadius: 24, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+                        <Hand size={32} color="#007aff" />
+                        <div>
+                            <div style={{ fontWeight: 'bold', fontSize: 18, color: '#1c1c1e' }}>터치하여 이동하세요</div>
+                            <div style={{ fontSize: 13, color: '#8e8e93' }}>Tap anywhere to move</div>
+                        </div>
+                   </div>
+                   <div style={{ width: 2, height: 40, background: 'rgba(255,255,255,0.5)', marginTop: 8 }}></div>
+                   <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'white' }}></div>
+              </div>
+          </div>
       )}
 
       {/* Mission Progress Indicator (Floating Right) */}

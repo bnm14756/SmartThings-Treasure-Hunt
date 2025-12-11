@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Flower, ChevronRight } from 'lucide-react';
 
@@ -9,26 +8,64 @@ interface BloomingGuideProps {
 
 export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines }) => {
   const [page, setPage] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
 
-  useEffect(() => { setPage(0); }, [lines]);
+  useEffect(() => { 
+      setPage(0); 
+      setIsVisible(true);
+  }, [lines]);
 
-  const handleNext = (e: React.MouseEvent) => {
+  const handleBubbleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (page < lines.length - 1) setPage(prev => prev + 1);
+    if (page < lines.length - 1) {
+        setPage(prev => prev + 1);
+    } else {
+        // Close when finished reading
+        setIsVisible(false);
+    }
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsVisible(prev => !prev);
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: 90, right: 16, zIndex: 40, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', cursor: 'pointer' }} onClick={handleNext}>
-      <div className="card animate-bounce" style={{ padding: 12, marginBottom: 8, maxWidth: 240, borderBottomRightRadius: 4, position: 'relative' }}>
-         <p style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{lines[page]}</p>
-         <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid #f2f2f7' }}>
-            <span style={{ fontSize: 10, color: '#8e8e93' }}>{page + 1} / {lines.length}</span>
-            {page < lines.length - 1 && <ChevronRight size={12} color="#007aff" />}
-         </div>
-      </div>
+    <div style={{ position: 'fixed', bottom: 90, right: 16, zIndex: 40, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+      {isVisible && (
+          <div 
+            className="card animate-bounce" 
+            style={{ 
+                padding: 12, 
+                marginBottom: 8, 
+                maxWidth: 240, 
+                borderBottomRightRadius: 4, 
+                position: 'relative', 
+                cursor: 'pointer' 
+            }}
+            onClick={handleBubbleClick}
+          >
+             <p style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{lines[page]}</p>
+             <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: '1px solid #f2f2f7' }}>
+                <span style={{ fontSize: 10, color: '#8e8e93' }}>{page + 1} / {lines.length}</span>
+                {page < lines.length - 1 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff' }}>
+                         <ChevronRight size={14} />
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#007aff', fontWeight: 'bold' }}>
+                        확인
+                    </div>
+                )}
+             </div>
+          </div>
+      )}
 
-      <div style={{ position: 'relative', width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Flower size={60} color="#007aff" fill="currentColor" strokeWidth={1.5} />
+      <div 
+        style={{ position: 'relative', width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        onClick={handleAvatarClick}
+      >
+        <Flower size={60} color={isVisible ? "#007aff" : "#c7c7cc"} fill="currentColor" strokeWidth={1.5} />
         <div style={{ width: 28, height: 28, background: 'white', borderRadius: '50%', position: 'absolute', zIndex: 10 }}></div>
         <div style={{ position: 'absolute', zIndex: 20, top: '38%', display: 'flex', gap: 2 }}>
              <div style={{ width: 10, height: 10, background: '#ffcc00', borderRadius: '50%' }}></div>
