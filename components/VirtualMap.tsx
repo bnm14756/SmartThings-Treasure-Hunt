@@ -107,7 +107,7 @@ export const VirtualMap: React.FC<VirtualMapProps> = ({ devices, avatarPosition,
       onMapClick(newX, newY);
   };
 
-  // Smaller D-Pad Button
+  // Smaller D-Pad Button (36px)
   const DPadButton: React.FC<{ onClick: (e: React.MouseEvent) => void; icon: React.ReactNode }> = ({ onClick, icon }) => (
       <button 
         onClick={onClick}
@@ -115,15 +115,16 @@ export const VirtualMap: React.FC<VirtualMapProps> = ({ devices, avatarPosition,
             background: 'rgba(255, 255, 255, 0.85)',
             border: '1px solid #d1d1d6',
             borderRadius: '10px',
-            width: 40,  // Reduced size
-            height: 40, // Reduced size
+            width: 36,  // Compact size
+            height: 36, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             color: '#007aff',
             cursor: 'pointer',
-            backdropFilter: 'blur(4px)'
+            backdropFilter: 'blur(4px)',
+            padding: 0
         }}
       >
           {icon}
@@ -131,7 +132,7 @@ export const VirtualMap: React.FC<VirtualMapProps> = ({ devices, avatarPosition,
   );
 
   return (
-    <div className="map-wrapper" style={{ padding: 10, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
+    <div className="map-wrapper" style={{ padding: 10, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', position: 'relative' }}>
         {/* Virtual House Container */}
         <div 
             className="virtual-house" 
@@ -184,19 +185,19 @@ export const VirtualMap: React.FC<VirtualMapProps> = ({ devices, avatarPosition,
             </div>
         </div>
 
-        {/* Compact D-Pad Controls - Positioned to minimize obstruction */}
+        {/* Fixed D-Pad Controls - Positioned to always be above Bottom Nav */}
         <div style={{ 
-            position: 'absolute', 
-            bottom: 30, 
+            position: 'fixed', 
+            bottom: 110, // Sufficient clearance for Bottom Nav
             left: 20, 
-            zIndex: 50,
+            zIndex: 60,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 2 // Tighter gap
+            gap: 4
         }}>
             <DPadButton onClick={(e) => moveAvatar(0, -10, e)} icon={<ArrowUp size={20} />} />
-            <div style={{ display: 'flex', gap: 2 }}>
+            <div style={{ display: 'flex', gap: 4 }}>
                 <DPadButton onClick={(e) => moveAvatar(-10, 0, e)} icon={<ArrowLeft size={20} />} />
                 <DPadButton onClick={(e) => moveAvatar(0, 10, e)} icon={<ArrowDown size={20} />} />
                 <DPadButton onClick={(e) => moveAvatar(10, 0, e)} icon={<ArrowRight size={20} />} />
