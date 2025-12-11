@@ -81,9 +81,9 @@ const AppContent: React.FC = () => {
         setGuideLines(currentMission.guideText);
     } else if (isGameClear) {
         setGuideLines([
-            '축하해! 모든 미션을 완료했어! 🎉',
-            '에너지 사용량이 적정량에 도달했어.',
-            'SmartThings와 함께라면 전기 요금 걱정 끝!'
+            '와! 모든 미션을 완료했어! 🎉',
+            '에너지 사용량을 딱 알맞게 줄였구나.',
+            '이제 SmartThings랑 함께라면 전기 요금 걱정 없겠어!'
         ]);
     }
   }, [currentMissionId, showIntro, isGameClear]);
