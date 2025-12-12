@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Device } from '../types';
-import { X, Power, ChevronUp, ChevronDown, CheckCircle2, Loader2, Smartphone, Wifi, Plus } from 'lucide-react';
+import { X, Power, ChevronUp, ChevronDown, CheckCircle2, Loader2, Smartphone, Wifi, Plus, Lock } from 'lucide-react';
 
 interface DeviceControlModalProps {
   device: Device;
@@ -12,6 +12,9 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
+  // Check if device is a refrigerator
+  const isFridge = device.type === 'refrigerator';
+
   const handleConnect = () => {
       setIsConnecting(true);
       setTimeout(() => {
@@ -21,6 +24,11 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
   };
 
   const handlePowerClick = () => {
+    if (isFridge) {
+        alert("냉장고 전원을 끄면 음식이 상할 수 있습니다!\n스마트싱스 에너지 관리로 효율만 높여보세요.");
+        return;
+    }
+
     setIsToggling(true);
     // Reduced latency to 300ms for snappier feel
     setTimeout(() => { 
@@ -74,9 +82,9 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
   // State 2: Connected -> Control UI
   // Define clear styles for ON/OFF states
   const headerBg = device.isOn ? '#007aff' : '#1c1c1e'; // Darker gray for OFF
-  const buttonBg = device.isOn ? 'white' : '#3a3a3c';
-  const buttonIconColor = device.isOn ? '#007aff' : '#8e8e93';
-  const buttonShadow = device.isOn ? '0 10px 20px rgba(0,122,255,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.2)';
+  const buttonBg = isFridge ? '#f2f2f7' : (device.isOn ? 'white' : '#3a3a3c');
+  const buttonIconColor = isFridge ? '#8e8e93' : (device.isOn ? '#007aff' : '#8e8e93');
+  const buttonShadow = !isFridge && device.isOn ? '0 10px 20px rgba(0,122,255,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.2)';
 
   return (
     <div className="modal-overlay">
@@ -106,16 +114,24 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
                         background: buttonBg,
                         color: buttonIconColor,
                         boxShadow: buttonShadow,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        cursor: isFridge ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: isToggling ? 'scale(0.95)' : 'scale(1)'
+                        transform: isToggling ? 'scale(0.95)' : 'scale(1)',
+                        position: 'relative'
                     }}
                 >
                     {isToggling ? <Loader2 className="animate-spin" /> : <Power size={40} strokeWidth={2.5} />}
+                    {isFridge && (
+                        <div style={{ position: 'absolute', bottom: -10, background: '#8e8e93', borderRadius: '50%', padding: 4, color: 'white' }}>
+                            <Lock size={12} />
+                        </div>
+                    )}
                 </button>
                 <p style={{ marginTop: 12, fontWeight: 'bold', fontSize: 18, color: device.isOn ? '#007aff' : '#8e8e93', transition: 'color 0.3s' }}>
                     {device.isOn ? '켜짐' : '꺼짐'}
                 </p>
+                {isFridge && <p style={{ fontSize: 11, color: '#8e8e93', marginTop: 4 }}>상시 전원 기기</p>}
             </div>
 
             {device.isOn && !isToggling && (
@@ -131,6 +147,12 @@ export const DeviceControlModal: React.FC<DeviceControlModalProps> = ({ device, 
                         </div>
                     )}
                     {device.type === 'ac' && (
+                         <div className="flex justify-between items-center">
+                             <span style={{ fontWeight: 'bold', color: '#8e8e93' }}>TEMP</span>
+                             <span style={{ fontSize: 24, fontWeight: 'bold' }}>{device.value}°C</span>
+                         </div>
+                    )}
+                    {device.type === 'refrigerator' && (
                          <div className="flex justify-between items-center">
                              <span style={{ fontWeight: 'bold', color: '#8e8e93' }}>TEMP</span>
                              <span style={{ fontSize: 24, fontWeight: 'bold' }}>{device.value}°C</span>

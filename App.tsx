@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ErrorInfo, ReactNode, Component } from 'react';
+import React, { useState, useEffect, ErrorInfo, ReactNode } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNavigation } from './components/BottomNavigation';
 import { VirtualMap } from './components/VirtualMap';
@@ -19,7 +19,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -67,6 +67,9 @@ const AppContent: React.FC = () => {
   const [avatarPos, setAvatarPos] = useState<Position>({ x: 50, y: 50 });
   const [guideLines, setGuideLines] = useState<string[]>([]);
   const [showVictoryModal, setShowVictoryModal] = useState(false);
+  
+  // New state to track if the user has interacted with the guide
+  const [hasGuideInteracted, setHasGuideInteracted] = useState(false);
   
   const currentMissionId = MISSIONS.find(m => !completedMissions.includes(m.id))?.id;
   const currentMission = MISSIONS.find(m => m.id === currentMissionId);
@@ -137,6 +140,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleMapClick = (x: number, y: number) => {
+    // Prevent movement if guide hasn't been clicked yet
+    if (!showIntro && !hasGuideInteracted) {
+        alert("먼저 우측 하단의 가이드(말풍선)를 확인해주세요!");
+        return;
+    }
+
     setAvatarPos({ x, y });
     if (showMoveGuide) setShowMoveGuide(false);
   };
@@ -156,8 +165,13 @@ const AppContent: React.FC = () => {
   const handleRunRoutine = (routineId: string) => {
       if (routineId === 'routine-1') {
           const count = devices.filter(d => d.isOn).length;
-          setDevices(prev => prev.map(d => ({ ...d, isOn: false, status: 'Off' })));
-          alert(`절전 모드 실행 완료!\n${count}개의 기기가 꺼졌습니다.`);
+          setDevices(prev => prev.map(d => {
+              // Routine 1 (Saving Mode) should not turn off the fridge
+              if (d.type === 'refrigerator') return d;
+              return { ...d, isOn: false, status: 'Off' };
+          }));
+          const realCount = devices.filter(d => d.isOn && d.type !== 'refrigerator').length;
+          alert(`절전 모드 실행 완료!\n${realCount}개의 기기가 꺼졌습니다.`);
       } else if (routineId === 'routine-2') {
           setDevices(prev => prev.map(d => {
               if (d.type === 'light' || d.type === 'tv') return { ...d, isOn: false };
@@ -187,6 +201,7 @@ const AppContent: React.FC = () => {
       setCompletedMissions([]);
       setShowIntro(true);
       setShowVictoryModal(false);
+      setHasGuideInteracted(false); // Reset guide interaction
       sessionStorage.removeItem('hasSeenMoveGuide');
       setActiveTab('home');
       setAvatarPos({ x: 50, y: 50 });
@@ -240,7 +255,11 @@ const AppContent: React.FC = () => {
 
       {/* Guide Avatar */}
       {!showIntro && activeTab !== 'menu' && (
-          <BloomingGuide lines={guideLines} onClick={() => {}} />
+          <BloomingGuide 
+            lines={guideLines} 
+            onClick={() => {}} 
+            onInteract={() => setHasGuideInteracted(true)} 
+          />
       )}
 
       {selectedDevice && (
@@ -251,8 +270,8 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* Move Tutorial */}
-      {showMoveGuide && activeTab === 'home' && !showIntro && (
+      {/* Move Tutorial - Only show if guide has been interacted with */}
+      {showMoveGuide && activeTab === 'home' && !showIntro && hasGuideInteracted && (
           <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.4)', zIndex: 60 }} onClick={() => setShowMoveGuide(false)}>
               <div className="animate-bounce" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'white' }}>
                    <div style={{ background: 'rgba(255,255,255,0.95)', padding: '16px 24px', borderRadius: 24, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>

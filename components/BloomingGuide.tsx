@@ -4,9 +4,10 @@ import { Flower, ChevronRight, ChevronLeft } from 'lucide-react';
 interface BloomingGuideProps {
   lines: string[];
   onClick: () => void;
+  onInteract?: () => void; // New prop to signal interaction
 }
 
-export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines }) => {
+export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines, onInteract }) => {
   const [page, setPage] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -35,6 +36,9 @@ export const BloomingGuide: React.FC<BloomingGuideProps> = ({ lines }) => {
   const handleAvatarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsVisible(prev => !prev);
+    if (onInteract) {
+        onInteract();
+    }
   };
 
   return (
